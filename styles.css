@@ -268,22 +268,19 @@
 
 .qmd-mode-group {
   display: flex;
-  gap: 0;
+  gap: 4px;
 }
 
 .qmd-mode-btn {
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 0.82em;
   border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
   background: var(--background-primary);
   color: var(--text-muted);
   cursor: pointer;
   font-family: var(--font-interface);
 }
-
-.qmd-mode-btn:first-child { border-radius: var(--radius-s) 0 0 var(--radius-s); }
-.qmd-mode-btn:last-child  { border-radius: 0 var(--radius-s) var(--radius-s) 0; }
-.qmd-mode-btn + .qmd-mode-btn { border-left: none; }
 
 .qmd-mode-btn--active {
   background: var(--interactive-accent);
@@ -297,6 +294,7 @@
 }
 
 .qmd-toolbar-in {
+  margin-left: auto;
   font-size: 0.82em;
   color: var(--text-muted);
 }
@@ -313,7 +311,6 @@
 }
 
 .qmd-status-chip {
-  margin-left: auto;
   font-size: 0.78em;
   color: var(--text-muted);
   font-family: var(--font-monospace);
@@ -429,6 +426,12 @@
   color: var(--text-muted);
   font-size: 0.9em;
   text-align: center;
+  animation: qmd-fade-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes qmd-fade-pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
 }
 
 /* Result items */
@@ -744,6 +747,14 @@
   flex-wrap: wrap;
   padding-top: 4px;
 }
+
+.qmd-docs-link {
+  font-size: 0.78em;
+  color: var(--text-faint);
+  text-decoration: none;
+  cursor: pointer;
+}
+.qmd-docs-link:hover { color: var(--text-muted); text-decoration: underline; }
 
 /* Plain muted version text — no colored pill (#15) */
 .qmd-version-meta {
@@ -1197,7 +1208,12 @@
 }
 
 /* ── Shared utilities ─────────────────────────────────────── */
-.qmd-error     { color: var(--text-error); }
+.qmd-error {
+  color: var(--text-error);
+  padding: 16px 14px;
+  font-size: 0.9em;
+}
+.qmd-error-hint { color: var(--text-muted); font-style: italic; }
 .qmd-muted     { color: var(--text-muted); }
 .qmd-no-results {
   color: var(--text-muted);

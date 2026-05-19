@@ -127,6 +127,11 @@ export class QmdSettingTab extends PluginSettingTab {
     const header = containerEl.createDiv({ cls: 'qmd-settings-header' });
     header.createEl('h2', { text: 'QMD Search', cls: 'qmd-settings-title' });
     const headerMeta = header.createDiv({ cls: 'qmd-settings-meta' });
+    const docsLink = headerMeta.createEl('a', { cls: 'qmd-docs-link', text: 'Docs ↗' });
+    docsLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.open('https://github.com/StevenWolfe/obsidian-qmd-search#readme');
+    });
     // Plain muted version text — no colored pill (#15)
     headerMeta.createEl('span', {
       cls: 'qmd-version-meta',

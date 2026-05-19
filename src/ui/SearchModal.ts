@@ -88,6 +88,11 @@ export class SearchModal extends Modal {
 
     // Mode segmented control — disable Semantic/Hybrid when embeddings missing (#10)
     const modeGroup = toolbar.createDiv({ cls: 'qmd-mode-group' });
+    const MODE_TOOLTIPS: Record<string, string> = {
+      keyword:  'BM25 keyword search — fast, no embeddings needed',
+      semantic: 'Vector similarity search — requires embeddings',
+      hybrid:   'BM25 + vectors + AI reranking — best quality, requires embeddings',
+    };
     for (const [label, value] of [
       ['Keyword', 'keyword'],
       ['Semantic', 'semantic'],
@@ -96,10 +101,10 @@ export class SearchModal extends Modal {
       const needsEmbeds = value === 'semantic' || value === 'hybrid';
       const disabled = needsEmbeds && !this.embeddingsAvailable;
       const btn = modeGroup.createEl('button', { text: label, cls: 'qmd-mode-btn' });
+      btn.setAttribute('title', disabled ? 'Generate embeddings first' : MODE_TOOLTIPS[value]);
       if (value === this.activeMode) btn.addClass('qmd-mode-btn--active');
       if (disabled) {
         btn.addClass('qmd-mode-btn--disabled');
-        btn.setAttribute('title', 'Generate embeddings first');
         btn.setAttribute('aria-disabled', 'true');
       } else {
         btn.addEventListener('click', () => {
@@ -166,6 +171,13 @@ export class SearchModal extends Modal {
     this.queryInput.addEventListener('keydown', (e: KeyboardEvent) => this.handleKeydown(e));
 
     this.queryInput.focus();
+
+    // Pre-warm qmd on first open so the user's first real search doesn't cold-start
+    if (!this.plugin.modelLoaded) {
+      void this.client.search({ query: '_warmup_', mode: 'keyword', limit: 1 })
+        .then(() => { this.plugin.modelLoaded = true; })
+        .catch(() => { /* ignore — warmup failure is non-fatal */ });
+    }
   }
 
   private updateFooterMode(): void {
@@ -273,7 +285,17 @@ export class SearchModal extends Modal {
     this.resultsEl.empty();
     this.focusedIndex = -1;
     this.resultItems = [];
-    this.resultsEl.createEl('p', { cls: 'qmd-searching', text: 'Searching…' });
+    const searchingEl = this.resultsEl.createEl('p', { cls: 'qmd-searching', text: 'Searching…' });
+
+    // After 1.5 s with no result, hint that this is a cold start
+    const isFirstSearch = !this.plugin.modelLoaded;
+    const slowTimer = isFirstSearch
+      ? window.setTimeout(() => {
+          if (gen === this.searchGeneration && searchingEl.isConnected) {
+            searchingEl.setText('Starting up… (first search may take a moment)');
+          }
+        }, 1500)
+      : null;
 
     const t0 = Date.now();
     let results: QmdResult[] | null = null;
@@ -300,6 +322,8 @@ export class SearchModal extends Modal {
       log.error('search failed:', searchError.message);
     }
 
+    if (slowTimer !== null) window.clearTimeout(slowTimer);
+
     // If a newer search has started, discard these results
     if (gen !== this.searchGeneration) return;
 
@@ -308,7 +332,10 @@ export class SearchModal extends Modal {
 
     if (searchError) {
       this.statusLine.setText('');
-      this.resultsEl.createEl('p', { cls: 'qmd-error', text: `Error: ${searchError.message}` });
+      const errEl = this.resultsEl.createEl('p', { cls: 'qmd-error', text: searchError.message });
+      if (this.activeMode !== 'keyword') {
+        errEl.createEl('span', { cls: 'qmd-error-hint', text: ' — try Keyword mode instead' });
+      }
       return;
     }
 
