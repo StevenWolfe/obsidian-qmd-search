@@ -46,7 +46,7 @@ export default class QmdSearchPlugin extends Plugin {
     this.addCommand({
       id: 'qmd-status',
       name: 'QMD: Index status',
-      callback: () => new StatusModal(this.app, this.client).open(),
+      callback: () => new StatusModal(this.app, this).open(),
     });
 
     this.addCommand({
