@@ -3,12 +3,17 @@ import type { QmdResult } from '../client/types';
 
 export async function navigateToResult(app: App, result: QmdResult): Promise<void> {
   // result.path is relative to the collection root (e.g. "notes/file.md").
-  // Try direct vault lookup first, then fall back to basename match.
+  // Normalise separators and case for Linux (case-sensitive FS) before matching.
+  const normalise = (p: string) => p.replace(/\\/g, '/').toLowerCase();
+  const pathNorm = normalise(result.path);
   const file =
     app.vault.getFileByPath(result.path) ??
-    app.vault.getMarkdownFiles().find(
-      (f) => f.path.endsWith('/' + result.path) || f.basename === result.path.replace(/\.md$/, ''),
-    ) ??
+    app.vault.getMarkdownFiles().find((f) => {
+      const fp = normalise(f.path);
+      return fp === pathNorm ||
+        fp.endsWith('/' + pathNorm) ||
+        f.basename.toLowerCase() === pathNorm.replace(/\.md$/, '');
+    }) ??
     null;
 
   if (!file) {
