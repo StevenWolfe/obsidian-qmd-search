@@ -12,6 +12,7 @@ import { SearchModal } from './ui/SearchModal';
 import { StatusPopover } from './ui/StatusPopover';
 import { OnboardingModal } from './ui/OnboardingModal';
 import type { PluginStatus } from './client/types';
+import { computeIndexHealth } from './client/types';
 
 const STATUS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const TRANSIENT_DURATION_MS = 3000;
@@ -25,6 +26,8 @@ export default class QmdSearchPlugin extends Plugin {
 
   pluginStatus: PluginStatus = { kind: 'unresolved' };
   recentQueries: string[] = [];
+
+  mcpConnected = false;
 
   private statusBarItem!: HTMLElement;
   private statusPopover: StatusPopover | null = null;
@@ -142,18 +145,28 @@ export default class QmdSearchPlugin extends Plugin {
         dot.addClass('qmd-dot--warn');
         value.setText('no index');
         break;
-      case 'idle':
-        dot.addClass('qmd-dot--ok');
-        value.setText(s.docs.toLocaleString());
+      case 'idle': {
+        const h = s.health;
+        if (h.kind === 'partial' || h.kind === 'stale') {
+          dot.addClass('qmd-dot--warn');
+          value.setText(`${s.docs.toLocaleString()} · no embeds`);
+        } else if (this.settings.transportMode === 'mcp-http' && !this.mcpConnected) {
+          dot.addClass('qmd-dot--warn');
+          value.setText(`${s.docs.toLocaleString()} · CLI fallback`);
+        } else {
+          dot.addClass('qmd-dot--ok');
+          value.setText(s.docs.toLocaleString());
+        }
         break;
+      }
       case 'indexing':
         dot.addClass('qmd-dot--accent');
         dot.addClass('qmd-dot--pulse');
-        value.setText(`indexing ${s.done.toLocaleString()} / ${s.total.toLocaleString()}`);
+        value.setText(`${s.done.toLocaleString()} / ${s.total.toLocaleString()}`);
         break;
       case 'error':
         dot.addClass('qmd-dot--err');
-        value.setText(s.code === 'binary_missing' ? 'binary not found' : 'error');
+        value.setText(s.code === 'binary_missing' ? 'binary missing' : 'error');
         break;
       case 'transient':
         dot.addClass('qmd-dot--ok');
@@ -169,7 +182,12 @@ export default class QmdSearchPlugin extends Plugin {
     switch (s.kind) {
       case 'unresolved': return 'QMD: loading…';
       case 'empty': return 'QMD: no index — click to set up';
-      case 'idle': return `QMD: ${s.docs.toLocaleString()} docs · click for details`;
+      case 'idle': {
+        const h = s.health;
+        if (h.kind === 'partial') return `QMD: ${s.docs.toLocaleString()} docs · embeddings missing — click for details`;
+        if (h.kind === 'stale') return `QMD: ${s.docs.toLocaleString()} docs · embeddings outdated — click for details`;
+        return `QMD: ${s.docs.toLocaleString()} docs · click for details`;
+      }
       case 'indexing': return `QMD: indexing ${s.done} / ${s.total}`;
       case 'error': return `QMD: error — ${s.detail}`;
       case 'transient': return `QMD: ${s.results} results · ${s.ms}ms`;
@@ -195,8 +213,14 @@ export default class QmdSearchPlugin extends Plugin {
         }
         break;
       case 'error':
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.app as any).setting?.open?.();
+        // binary_missing → jump straight to settings; otherwise show popover
+        if (s.code === 'binary_missing') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (this.app as any).setting?.open?.();
+        } else {
+          if (!this.statusPopover) this.statusPopover = new StatusPopover(this);
+          this.statusPopover.toggle(this.statusBarItem);
+        }
         break;
       case 'transient':
         new SearchModal(this.app, this.client, this.settings, this).open();
@@ -221,12 +245,14 @@ export default class QmdSearchPlugin extends Plugin {
       if (s.collections.length === 0) {
         this.setPluginStatus({ kind: 'empty' });
       } else {
+        this.mcpConnected = this.settings.transportMode !== 'mcp-http' || s.healthy;
         this.setPluginStatus({
           kind: 'idle',
           docs: totalDocs,
           collections: s.collections.length,
           embeddings: totalVectors,
           lastIndexed,
+          health: computeIndexHealth(totalDocs, totalVectors),
         });
       }
     } catch (err) {

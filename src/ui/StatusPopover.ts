@@ -46,20 +46,27 @@ export class StatusPopover {
     const body = el.createDiv({ cls: 'qmd-popover-body' });
     body.createEl('p', { cls: 'qmd-popover-loading', text: 'Loading…' });
 
-    // Footer
+    // Footer — primary CTA adapts to health state (#14)
     const footer = el.createDiv({ cls: 'qmd-popover-footer' });
-    const reindexBtn = footer.createEl('button', { cls: 'qmd-popover-btn mod-cta', text: 'Re-index' });
-    reindexBtn.setAttribute('title', 'Update the text index (qmd update) — run after adding or editing notes');
-    reindexBtn.addEventListener('click', () => {
-      this.close();
-      this.plugin.reindex();
-    });
-    const embedBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: 'Embed' });
-    embedBtn.setAttribute('title', 'Generate vector embeddings (qmd embed) — run after re-indexing to enable semantic search');
-    embedBtn.addEventListener('click', () => {
-      this.close();
-      this.plugin.embed();
-    });
+    const ps = this.plugin.pluginStatus;
+    const isPartial = ps.kind === 'idle' && (ps.health.kind === 'partial' || ps.health.kind === 'stale');
+
+    if (isPartial) {
+      // partial: primary = Generate embeddings
+      const embedCta = footer.createEl('button', { cls: 'qmd-popover-btn mod-cta', text: '✨ Generate embeddings' });
+      embedCta.addEventListener('click', () => { this.close(); void this.plugin.embed(); });
+      const reindexBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: '↻ Re-index' });
+      reindexBtn.setAttribute('title', 'Refresh text index (fast). Run before generating embeddings.');
+      reindexBtn.addEventListener('click', () => { this.close(); void this.plugin.reindex(); });
+    } else {
+      // healthy: primary = Re-index
+      const reindexBtn = footer.createEl('button', { cls: 'qmd-popover-btn mod-cta', text: '↻ Re-index' });
+      reindexBtn.setAttribute('title', 'Update the text index (qmd update) — run after adding or editing notes');
+      reindexBtn.addEventListener('click', () => { this.close(); void this.plugin.reindex(); });
+      const embedBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: '✨ Generate embeddings' });
+      embedBtn.setAttribute('title', 'Generate vector embeddings (qmd embed) — run after re-indexing to enable semantic search');
+      embedBtn.addEventListener('click', () => { this.close(); void this.plugin.embed(); });
+    }
     const settingsBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: 'Settings' });
     settingsBtn.addEventListener('click', () => {
       this.close();
@@ -74,10 +81,24 @@ export class StatusPopover {
     this.plugin.client.status().then((s) => {
       if (!this.el) return;
       body.empty();
-      statusLabel.setText(s.healthy ? 'Index healthy' : 'Index unhealthy');
-      if (!s.healthy) {
+      const totalDocs = s.totalDocs ?? s.collections.reduce((n, c) => n + c.docCount, 0);
+      const totalVectors = s.totalVectors ?? 0;
+      const isPartialStatus = totalDocs > 0 && totalVectors === 0;
+      const isStaleStatus = totalVectors > 0 && totalVectors < totalDocs;
+      if (isPartialStatus) {
+        statusLabel.setText('Index partial — embeddings missing');
+        statusDot.removeClass('qmd-dot--ok');
+        statusDot.addClass('qmd-dot--warn');
+      } else if (isStaleStatus) {
+        statusLabel.setText('Index stale — some embeddings missing');
+        statusDot.removeClass('qmd-dot--ok');
+        statusDot.addClass('qmd-dot--warn');
+      } else if (!s.healthy) {
+        statusLabel.setText('Index unhealthy');
         statusDot.removeClass('qmd-dot--ok');
         statusDot.addClass('qmd-dot--err');
+      } else {
+        statusLabel.setText('Index healthy');
       }
       this.renderBody(body, s);
     }).catch((err: Error) => {
@@ -110,20 +131,21 @@ export class StatusPopover {
     const totalDocs = s.totalDocs ?? s.collections.reduce((n, c) => n + c.docCount, 0);
     const totalVectors = s.totalVectors ?? 0;
     const lastIndexed = s.collections[0]?.lastIndexed;
+    const embeddingsMissing = totalDocs > 0 && totalVectors < totalDocs;
 
-    const rows: [string, string][] = [
+    const rows: [string, string, boolean?][] = [
       ['Documents', totalDocs.toLocaleString()],
       ['Collections', `${s.collections.length} registered`],
-      ['Embeddings', `${totalVectors.toLocaleString()} / ${totalDocs.toLocaleString()}`],
+      ['Embeddings', `${totalVectors.toLocaleString()} / ${totalDocs.toLocaleString()}`, embeddingsMissing],
     ];
     if (lastIndexed) rows.push(['Last indexed', timeAgo(lastIndexed)]);
     if (s.indexSize) rows.push(['Disk', s.indexSize]);
 
     const table = body.createEl('table', { cls: 'qmd-popover-table' });
-    for (const [key, val] of rows) {
+    for (const [key, val, warn] of rows) {
       const row = table.createEl('tr');
       row.createEl('td', { cls: 'qmd-popover-key', text: key });
-      row.createEl('td', { cls: 'qmd-popover-val', text: val });
+      row.createEl('td', { cls: `qmd-popover-val${warn ? ' qmd-popover-val--warn' : ''}`, text: val });
     }
 
     if (s.collections.length > 0) {
