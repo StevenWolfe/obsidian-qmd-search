@@ -67,11 +67,65 @@ Electron's renderer process strips the user's shell PATH. Two functions work tog
 
 `src/util/log.ts` exports a `log` object (`log.error`, `log.warn`, `log.debug`) gated by a `LogLevel` setting (`off` | `error` | `warn` | `debug`). Default level is `error`. `setLogLevel()` is called from `loadSettings` and `saveSettings`.
 
-### Releases
+### Releases & CI/CD
 
-One workflow handles releases:
+#### Cutting a release
 
-- **`ship.yml`** (`workflow_dispatch`) — the only release path. Go to GitHub → Actions → Ship Release → Run workflow → pick `patch` / `minor` / `major`. Bumps `manifest.json` and `versions.json`, commits, tags, and publishes the GitHub release in one run.
+GitHub → Actions → **Ship Release** → Run workflow → pick `patch` / `minor` / `major`.
+
+The workflow (`ship.yml`):
+1. Runs CI gate (type-check + lint + build) on current `main`.
+2. Bumps `manifest.json` + `versions.json` (source of truth — `package.json` stays at `0.0.0` forever, this plugin is not published to npm).
+3. Pushes a `chore/release-vX.Y.Z` branch and opens a PR.
+4. Posts commit statuses on that branch commit for the three required checks (`CI / Type check`, `CI / Lint`, `CI / Build`) — this satisfies branch protection without re-running CI or needing a PAT (see _Why statuses, not CI_ below).
+5. Enables auto-merge, polls until merged, then tags the release and publishes the GitHub release with zip + individual assets.
+
+If a release run fails after step 3, the stale `chore/release-v*` branch is cleaned up automatically on the next run (step 3 deletes it before pushing).
+
+#### Checking what version ships next
+
+```bash
+cat manifest.json | grep version
+# output: "version": "0.12.3"  → next patch = 0.12.4
+```
+
+#### Branch protection (required status checks)
+
+`main` has a repository ruleset requiring **CI / Type check**, **CI / Lint**, **CI / Build** to pass before merge. Set via:
+
+```bash
+gh api repos/StevenWolfe/obsidian-qmd-search/branches/main/protection \
+  -X PUT \
+  -H "Accept: application/vnd.github+json" \
+  -f required_status_checks[strict]=false \
+  -f 'required_status_checks[contexts][]=CI / Type check' \
+  -f 'required_status_checks[contexts][]=CI / Lint' \
+  -f 'required_status_checks[contexts][]=CI / Build' \
+  -f enforce_admins=false \
+  -f required_pull_request_reviews=null \
+  -f restrictions=null
+```
+
+#### Required repo settings (one-time)
+
+Settings → Actions → General:
+- **Workflow permissions** → Read and write permissions
+- **Allow GitHub Actions to create and approve pull requests** → ✓ checked
+
+Settings → General → Pull Requests:
+- **Allow auto-merge** → ✓ checked
+
+#### Why statuses, not CI (no PAT needed)
+
+GitHub blocks all workflow triggers from `GITHUB_TOKEN` (loop prevention). When `ship.yml` creates the release branch with `GITHUB_TOKEN`, the `pull_request` event never fires and CI never runs. The fix: `ship.yml` posts synthetic commit statuses via the GitHub Statuses API after the branch push. The `GITHUB_TOKEN` has `statuses: write` permission, so this works without a PAT. The statuses satisfy the required checks and auto-merge proceeds.
+
+_If you ever need to run CI on the release branch manually_ (e.g. during debugging), push an empty commit from your local machine:
+```bash
+git fetch origin chore/release-vX.Y.Z
+git checkout chore/release-vX.Y.Z
+git commit --allow-empty -m "ci: trigger checks"
+git push
+```
 
 `release.yml` was deleted (PR #51) — it was a duplicate that would have fired a second time on the same tag.
 
