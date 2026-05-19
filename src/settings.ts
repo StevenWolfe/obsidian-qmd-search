@@ -286,17 +286,37 @@ export class QmdSettingTab extends PluginSettingTab {
     const cardActions = card.createDiv({ cls: 'qmd-health-card-actions' });
     if (isPartial) {
       const embedCta = cardActions.createEl('button', { cls: 'qmd-health-action-btn mod-cta', text: '✨ Generate embeddings' });
-      embedCta.addEventListener('click', () => { void this.plugin.embed(); this.display(); });
+      embedCta.addEventListener('click', async () => {
+        embedCta.disabled = true;
+        embedCta.textContent = '⏳ Embedding…';
+        await this.plugin.embed();
+        if (embedCta.isConnected) this.display();
+      });
       const reindexBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
       reindexBtn.setAttribute('title', 'Refresh the text index (fast). Run before generating embeddings.');
-      reindexBtn.addEventListener('click', () => { void this.plugin.reindex(); });
+      reindexBtn.addEventListener('click', async () => {
+        reindexBtn.disabled = true;
+        reindexBtn.textContent = '⏳ Indexing…';
+        await this.plugin.reindex();
+        if (reindexBtn.isConnected) this.display();
+      });
     } else {
       const reindexCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
       reindexCardBtn.setAttribute('title', 'Run qmd update — refreshes the text index after adding or editing notes. Fast.');
-      reindexCardBtn.addEventListener('click', () => { void this.plugin.reindex(); });
+      reindexCardBtn.addEventListener('click', async () => {
+        reindexCardBtn.disabled = true;
+        reindexCardBtn.textContent = '⏳ Indexing…';
+        await this.plugin.reindex();
+        if (reindexCardBtn.isConnected) this.display();
+      });
       const embedCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '✨ Generate embeddings' });
       embedCardBtn.setAttribute('title', 'Run qmd embed — generates vector embeddings for semantic/hybrid search.');
-      embedCardBtn.addEventListener('click', () => { void this.plugin.embed(); });
+      embedCardBtn.addEventListener('click', async () => {
+        embedCardBtn.disabled = true;
+        embedCardBtn.textContent = '⏳ Embedding…';
+        await this.plugin.embed();
+        if (embedCardBtn.isConnected) this.display();
+      });
     }
 
     // Stats row

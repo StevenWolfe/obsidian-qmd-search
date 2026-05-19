@@ -291,6 +291,7 @@ export default class QmdSearchPlugin extends Plugin {
 
   reindex(): Promise<void> {
     const notice = new Notice('QMD: re-indexing collections…', 0);
+    this.showOperationInStatusBar('indexing…');
     const args = this.settings.indexName ? ['--index', this.settings.indexName, 'update'] : ['update'];
     return new Promise((resolve) => {
       execFile(this.resolvedBinaryPath, args, { timeout: 600_000, env: buildEnv() }, (err) => {
@@ -305,6 +306,7 @@ export default class QmdSearchPlugin extends Plugin {
 
   embed(): Promise<void> {
     const notice = new Notice('QMD: generating embeddings…', 0);
+    this.showOperationInStatusBar('embedding…');
     const args = this.settings.indexName ? ['--index', this.settings.indexName, 'embed'] : ['embed'];
     return new Promise((resolve) => {
       execFile(this.resolvedBinaryPath, args, { timeout: 600_000, env: buildEnv() }, (err) => {
@@ -315,6 +317,17 @@ export default class QmdSearchPlugin extends Plugin {
         resolve();
       });
     });
+  }
+
+  /** Immediately render a pulsing in-progress label in the status bar chip. */
+  private showOperationInStatusBar(label: string): void {
+    const el = this.statusBarItem;
+    if (!el) return;
+    el.empty();
+    el.createSpan({ cls: 'qmd-dot qmd-dot--accent qmd-dot--pulse' });
+    el.createSpan({ cls: 'qmd-sb-label', text: 'qmd' });
+    el.createSpan({ cls: 'qmd-sb-value', text: label });
+    el.setAttribute('title', `QMD: ${label}`);
   }
 
   private buildClient(): QmdClient {
