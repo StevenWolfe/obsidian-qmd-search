@@ -1,7 +1,7 @@
 {
   "id": "qmd-search",
   "name": "QMD Search",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "minAppVersion": "1.0.0",
   "description": "Local semantic and keyword search over qmd-indexed knowledge bases.",
   "author": "StevenWolfe",
