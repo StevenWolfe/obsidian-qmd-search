@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   transportMode: 'cli',
   mcpPort: 8181,
   defaultCollection: '',
-  defaultSearchMode: 'hybrid',
+  defaultSearchMode: 'keyword',
   noRerank: false,
   candidateLimit: undefined,
   minScore: undefined,
