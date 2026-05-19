@@ -52,6 +52,47 @@ function parseStatusText(raw: string): QmdStatus {
   const totalDocs = totalMatch ? parseInt(totalMatch[1], 10) : 0;
   log.debug('totalMatch:', totalMatch?.[0] ?? '(none)');
 
+  const vectorsMatch = raw.match(/Vectors:\s+(\d+) embedded/);
+  const totalVectors = vectorsMatch ? parseInt(vectorsMatch[1], 10) : undefined;
+
+  const indexPathMatch = raw.match(/^Index:\s+(.+)/m);
+  const indexPath = indexPathMatch ? indexPathMatch[1].trim() : undefined;
+
+  const indexSizeMatch = raw.match(/^Size:\s+(.+)/m);
+  const indexSize = indexSizeMatch ? indexSizeMatch[1].trim() : undefined;
+
+  const astStatusMatch = raw.match(/Status:\s+(\w+)/);
+  const astChunkingActive = astStatusMatch ? astStatusMatch[1] === 'active' : undefined;
+
+  const astLangMatch = raw.match(/Languages?:\s+(.+)/);
+  const astLanguages = astLangMatch ? astLangMatch[1].trim().split(/,\s*/) : undefined;
+
+  const lastPathSegment = (s: string): string => {
+    const m = s.trim().match(/\/([^/]+)\s*$/);
+    return m ? m[1] : s.trim();
+  };
+
+  const embeddingMatch = raw.match(/Embedding:\s+(.+)/);
+  const embeddingModel = embeddingMatch ? lastPathSegment(embeddingMatch[1]) : undefined;
+
+  const rerankingMatch = raw.match(/Reranking:\s+(.+)/);
+  const rerankingModel = rerankingMatch ? lastPathSegment(rerankingMatch[1]) : undefined;
+
+  const generationMatch = raw.match(/Generation:\s+(.+)/);
+  const generationModel = generationMatch ? lastPathSegment(generationMatch[1]) : undefined;
+
+  const gpuLineMatch = raw.match(/GPU:\s+(.+)/);
+  const gpuInfo = gpuLineMatch ? gpuLineMatch[1].trim() : undefined;
+
+  const devicesMatch = raw.match(/Devices:\s+(.+)/);
+  const gpuDevice = devicesMatch ? devicesMatch[1].trim() : undefined;
+
+  const vramMatch = raw.match(/VRAM:\s+(.+)/);
+  const gpuVram = vramMatch ? vramMatch[1].trim() : undefined;
+
+  const cpuMatch = raw.match(/CPU:\s+(.+)/);
+  const cpuCores = cpuMatch ? cpuMatch[1].trim() : undefined;
+
   // Collection entries are indented 2 spaces followed by name + (qmd://...)
   // Child properties (Files:, Updated:) are indented 4+ spaces.
   for (let i = 0; i < lines.length; i++) {
@@ -81,6 +122,19 @@ function parseStatusText(raw: string): QmdStatus {
     healthy: true,
     message: `${totalDocs} doc${totalDocs !== 1 ? 's' : ''} indexed`,
     collections,
+    indexPath,
+    indexSize,
+    totalDocs,
+    totalVectors,
+    astChunkingActive,
+    astLanguages,
+    embeddingModel,
+    rerankingModel,
+    generationModel,
+    gpuInfo,
+    gpuDevice,
+    gpuVram,
+    cpuCores,
   };
   log.debug('status result:', result);
   return result;

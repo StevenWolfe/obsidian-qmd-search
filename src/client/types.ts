@@ -51,7 +51,29 @@ export interface QmdStatus {
   healthy: boolean;
   message: string;
   collections: QmdCollectionStatus[];
+  // Extended fields parsed from qmd status (CLI transport only)
+  indexPath?: string;
+  indexSize?: string;
+  totalDocs?: number;
+  totalVectors?: number;
+  astChunkingActive?: boolean;
+  astLanguages?: string[];
+  embeddingModel?: string;
+  rerankingModel?: string;
+  generationModel?: string;
+  gpuInfo?: string;
+  gpuDevice?: string;
+  gpuVram?: string;
+  cpuCores?: string;
 }
+
+export type PluginStatus =
+  | { kind: 'unresolved' }
+  | { kind: 'empty' }
+  | { kind: 'idle'; docs: number; collections: number; embeddings: number; lastIndexed?: string }
+  | { kind: 'indexing'; done: number; total: number }
+  | { kind: 'error'; detail: string; code: 'binary_missing' | 'index_corrupt' | 'qmd_crash' }
+  | { kind: 'transient'; results: number; ms: number };
 
 export type SearchMode = 'keyword' | 'semantic' | 'hybrid';
 
