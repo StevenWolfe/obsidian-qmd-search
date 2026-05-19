@@ -12,7 +12,7 @@ All notable changes to QMD Search are documented here. Versions follow [Semantic
 - Status popover footer wraps when three buttons are too wide to fit; Settings button is right-aligned via `margin-left: auto`
 
 ### Changed
-- Auto-reindex delay default corrected from 3 s → 10 s — 3 s was too aggressive for vaults with 500+ notes where `qmd update` takes 5–15 s
+- Auto-reindex delay default corrected from 3 s → 90 s — 3 s was too aggressive for vaults with 500+ notes where `qmd update` takes 5–15 s; starting conservative until a self-tuning benchmark is available
 
 ---
 

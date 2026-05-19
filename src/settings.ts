@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   recentQueries: [],
   onboardingDone: false,
   autoReindex: false,
-  reindexDebounceSeconds: 10,
+  reindexDebounceSeconds: 90,
 };
 
 function runVersion(binary: string): Promise<string> {
