@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="qmd search">
+  
+  <rect width="32" height="32" rx="8" fill="#1c1c1f"></rect>
+  
+  <g fill="none" stroke="#faf9f6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="13.5" cy="13.5" r="6.5"></circle>
+    <path d="m22 22-4-4"></path>
+  </g>
+  
+  <circle cx="13.5" cy="13.5" r="1.6" fill="#a78bfa"></circle>
+</svg>

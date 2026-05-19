@@ -5,6 +5,7 @@
 [![Obsidian](https://img.shields.io/badge/Obsidian-≥%201.0-7c3aed)](https://obsidian.md)
 [![Desktop only](https://img.shields.io/badge/platform-desktop%20only-18181b)](https://obsidian.md)
 [![License](https://img.shields.io/github/license/StevenWolfe/obsidian-qmd-search)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-site-7c3aed)](https://stevenwolfe.github.io/obsidian-qmd-search)
 
 **BM25 keyword · vector semantic · LLM-reranked hybrid search — running entirely on your machine.**
 
@@ -206,6 +207,21 @@ VAULT_PATH=~/path/to/vault npm run deploy
 See [CLAUDE.md](CLAUDE.md) for architecture notes.
 
 To cut a release: use the **Ship Release** workflow dispatch on GitHub (patch / minor / major). It bumps versions, builds, commits, tags, and publishes the GitHub release automatically.
+
+---
+
+## Docs site
+
+The documentation site lives in `docs-site/` — an Astro static site that deploys to [GitHub Pages](https://stevenwolfe.github.io/obsidian-qmd-search) automatically on pushes to `main` that touch `docs-site/**`.
+
+```bash
+cd docs-site
+npm install
+npm run dev    # local preview at http://localhost:4321/obsidian-qmd-search
+npm run build  # static output → docs-site/dist/
+```
+
+After merging, enable GitHub Pages in repo Settings → Pages → Source: **GitHub Actions**.
 
 ---
 

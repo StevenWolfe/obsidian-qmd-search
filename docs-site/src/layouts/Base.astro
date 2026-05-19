@@ -1,0 +1,59 @@
+---
+// Shared layout: head, nav, footer. Pages slot their content into <slot />.
+const { title, description, activePage = 'overview' } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href={`${base}/styles.css`} />
+  <link rel="icon" type="image/svg+xml" href={`${base}/assets/favicon.svg`} />
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href={base + '/'}>
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>
+          </svg>
+        </span>
+        <span class="brand-name">qmd search<span class="sub"> · for obsidian</span></span>
+      </a>
+      <span class="nav-pill">v0.12.0 · pre-release</span>
+      <nav class="nav-links">
+        <a href={base + '/'} class={activePage === 'overview' ? 'active' : ''}>Overview</a>
+        <a href={base + '/docs'} class={activePage === 'docs' ? 'active' : ''}>Docs</a>
+        <a class="gh" href="https://github.com/StevenWolfe/obsidian-qmd-search" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <slot />
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <span>qmd search</span>
+      <span class="sep">·</span>
+      <a href={base + '/'}>Overview</a>
+      <a href={base + '/docs'}>Docs</a>
+      <a href={base + '/license'}>License</a>
+      <a href={base + '/attribution'}>Attribution</a>
+      <a href="https://github.com/StevenWolfe/obsidian-qmd-search" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep">·</span>
+      <span>MIT</span>
+      <span class="right">v0.12.0 · pre-release</span>
+    </div>
+  </footer>
+</body>
+</html>

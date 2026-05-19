@@ -1,0 +1,55 @@
+---
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL;
+---
+<Base
+  title="License · QMD Search for Obsidian"
+  description="The QMD Search Obsidian plugin and its documentation site are released under the MIT License."
+  activePage="license"
+>
+
+<div class="wrap">
+  <article class="prose">
+    <div class="eyebrow">Legal</div>
+    <h1>MIT License</h1>
+    <p class="lead">
+      The QMD Search Obsidian plugin and this documentation site are released under the MIT License — short, permissive, and consistent with the rest of the qmd ecosystem.
+    </p>
+
+    <div class="license-text">Copyright (c) 2026 The QMD Search contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.</div>
+
+    <section>
+      <h2>Scope</h2>
+      <p>
+        The MIT License above covers the <strong>plugin source code</strong> in this repository and the <strong>HTML, CSS and assets</strong> of this documentation site. It does <em>not</em> cover the upstream projects this plugin depends on — Obsidian, the qmd engine, BRAT, IBM Plex — each of which is governed by its own license. See the <a href={`${base}/attribution`}>Attribution</a> page for a full list.
+      </p>
+    </section>
+
+    <section>
+      <h2>Contributing</h2>
+      <p>
+        Contributions are accepted under the same MIT terms. By opening a pull request you agree your changes can be redistributed under the license above. There is no CLA.
+      </p>
+    </section>
+  </article>
+</div>
+
+</Base>

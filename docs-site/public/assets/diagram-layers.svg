@@ -1,0 +1,70 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 520" width="580" height="520" role="img" aria-labelledby="diagTitle diagDesc" font-family="IBM Plex Sans, system-ui, sans-serif">
+  <title id="diagTitle">QMD Search architecture</title>
+  <desc id="diagDesc">Markdown notes feed the qmd index, which builds two parallel layers — BM25 keyword and embedding vectors — that are then merged and reranked into results.</desc>
+
+  
+  <g transform="translate(190, 24)">
+    <text x="100" y="0" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10.5" letter-spacing="1.6" fill="#9a9aa1">YOUR VAULT</text>
+    <rect x="0" y="14" width="200" height="48" rx="8" fill="#f2f0ea" stroke="#e8e5dd"></rect>
+    <text x="100" y="44" text-anchor="middle" font-size="14" fill="#1c1c1f" font-weight="500">Markdown notes</text>
+  </g>
+
+  
+  <g stroke="#9a9aa1" stroke-width="1.4" fill="none">
+    <path d="M290 86 L290 122"></path>
+    <path d="M285 117 L290 124 L295 117" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+
+  
+  <g transform="translate(170, 130)">
+    <rect width="240" height="56" rx="10" fill="#f1ecff" stroke="#d1c5ff"></rect>
+    <text x="120" y="33" text-anchor="middle" font-size="15" font-weight="600" fill="#5a3df0">qmd index</text>
+    <text x="120" y="49" text-anchor="middle" font-size="11.5" fill="#7c5cff" font-family="IBM Plex Mono, ui-monospace, monospace">local sqlite · per vault</text>
+  </g>
+
+  
+  <g stroke="#9a9aa1" stroke-width="1.4" fill="none">
+    <path d="M290 192 L290 218 L160 218 L160 250"></path>
+    <path d="M290 192 L290 218 L420 218 L420 250"></path>
+    <path d="M155 245 L160 252 L165 245" stroke-linecap="round" stroke-linejoin="round"></path>
+    <path d="M415 245 L420 252 L425 245" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+
+  
+  <g transform="translate(60, 258)">
+    <text x="100" y="0" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10.5" letter-spacing="1.6" fill="#9a9aa1">LAYER · LEXICAL</text>
+    <rect x="0" y="14" width="200" height="64" rx="8" fill="#ffffff" stroke="#e8e5dd"></rect>
+    <text x="100" y="42" text-anchor="middle" font-size="15" fill="#1c1c1f" font-weight="600">BM25</text>
+    <text x="100" y="62" text-anchor="middle" font-size="12" fill="#6b6b73">keyword · exact terms</text>
+  </g>
+
+  <g transform="translate(320, 258)">
+    <text x="100" y="0" text-anchor="middle" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="10.5" letter-spacing="1.6" fill="#9a9aa1">LAYER · SEMANTIC</text>
+    <rect x="0" y="14" width="200" height="64" rx="8" fill="#ffffff" stroke="#e8e5dd"></rect>
+    <text x="100" y="42" text-anchor="middle" font-size="15" fill="#1c1c1f" font-weight="600">Vectors</text>
+    <text x="100" y="62" text-anchor="middle" font-size="12" fill="#6b6b73">embeddings · meaning</text>
+  </g>
+
+  
+  <g stroke="#9a9aa1" stroke-width="1.4" fill="none">
+    <path d="M160 336 L160 370 L290 370 L290 398"></path>
+    <path d="M420 336 L420 370 L290 370"></path>
+    <path d="M285 393 L290 400 L295 393" stroke-linecap="round" stroke-linejoin="round"></path>
+  </g>
+
+  
+  <g transform="translate(170, 406)">
+    <rect width="240" height="56" rx="10" fill="#1c1c1f"></rect>
+    <text x="120" y="33" text-anchor="middle" font-size="15" font-weight="600" fill="#faf9f6">rerank → results</text>
+    <text x="120" y="49" text-anchor="middle" font-size="11.5" fill="#9a9aa1" font-family="IBM Plex Mono, ui-monospace, monospace">ranked, scored, snippeted</text>
+  </g>
+
+  
+  <g transform="translate(0, 488)" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="11" fill="#6b6b73">
+    <circle cx="80" cy="0" r="3" fill="#7c5cff"></circle>
+    <text x="92" y="4">Hybrid uses both layers</text>
+    <circle cx="320" cy="0" r="3" fill="#9a9aa1"></circle>
+    <text x="332" y="4">Keyword uses BM25 only</text>
+  </g>
+</svg>
