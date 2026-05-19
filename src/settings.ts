@@ -384,11 +384,11 @@ export class QmdSettingTab extends PluginSettingTab {
       });
     }
 
-    this.renderGeneralSettings(container);
+    this.renderGeneralSettings(container, status.collections.map((c) => c.name));
     this.renderAdvancedSection(container, wasAdvancedOpen);
   }
 
-  private renderGeneralSettings(container: HTMLElement): void {
+  private renderGeneralSettings(container: HTMLElement, liveCollectionNames?: string[]): void {
     const section = container.createDiv({ cls: 'qmd-settings-section' });
     section.createEl('div', { cls: 'qmd-section-title', text: 'General' });
 
@@ -406,8 +406,8 @@ export class QmdSettingTab extends PluginSettingTab {
           });
       });
 
-    // Default collection
-    const collectionNames = loadCollectionNames();
+    // Default collection — prefer live names from qmd status; fall back to index.yml
+    const collectionNames = liveCollectionNames ?? loadCollectionNames();
     let collectionSelectEl: HTMLSelectElement | undefined;
     new Setting(section)
       .setName('Default collection')
@@ -425,15 +425,6 @@ export class QmdSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings(false);
         });
       });
-    void (async () => {
-      const names = loadCollectionNames();
-      if (!collectionSelectEl?.isConnected || names.length === 0) return;
-      populateSelect(
-        collectionSelectEl,
-        [{ value: '', label: 'All collections' }, ...names.map((n) => ({ value: n, label: n }))],
-        this.plugin.settings.defaultCollection,
-      );
-    })();
 
     // Auto-reindex
     new Setting(section)
