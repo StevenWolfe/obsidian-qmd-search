@@ -29,6 +29,7 @@ export interface QmdSearchSettings {
   recentQueries: string[];
   onboardingDone: boolean;
   autoReindex: boolean;
+  reindexDebounceSeconds: number;
 }
 
 export const DEFAULT_SETTINGS: QmdSearchSettings = {
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   recentQueries: [],
   onboardingDone: false,
   autoReindex: false,
+  reindexDebounceSeconds: 30,
 };
 
 function runVersion(binary: string): Promise<string> {
@@ -430,6 +432,26 @@ export class QmdSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings(false);
           }),
       );
+
+    const debounceValueEl = section.createEl('span', {
+      text: `${this.plugin.settings.reindexDebounceSeconds}s`,
+      cls: 'qmd-slider-value',
+    });
+    new Setting(section)
+      .setName('Reindex delay')
+      .setDesc('Seconds to wait after the last file change before triggering a reindex.')
+      .setClass('qmd-setting-with-value')
+      .addSlider((slider) =>
+        slider
+          .setLimits(5, 120, 5)
+          .setValue(this.plugin.settings.reindexDebounceSeconds)
+          .onChange(async (value) => {
+            debounceValueEl.setText(`${value}s`);
+            this.plugin.settings.reindexDebounceSeconds = value;
+            await this.plugin.saveSettings(false);
+          }),
+      )
+      .settingEl.append(debounceValueEl);
 
     // qmd binary path
     const versionEl = section.createEl('p', { cls: 'qmd-version-hint' });
