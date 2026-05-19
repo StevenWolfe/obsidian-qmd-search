@@ -62,9 +62,10 @@ The `qmd` item in Obsidian's status bar shows index health at a glance. The dot 
 | State | Dot | Label | Click |
 |-------|-----|-------|-------|
 | **Idle** | 🟢 green | doc count | Open status popover |
+| **Partial** | 🟡 yellow | `N · no embeds` | Open status popover |
 | **Empty** | 🟡 yellow | `no index` | Open onboarding |
-| **Indexing** | 🟣 blue pulse | `indexing N / M` | Open status popover |
-| **Error** | 🔴 red | `binary not found` | Open settings |
+| **Embedding / indexing** | 🟣 blue pulse | `embedding…` / `indexing…` | Open status popover |
+| **Error** | 🔴 red | `binary missing` | Open settings |
 | **After search** | 🟢 green | `N results · Xms` | Re-open last query |
 
 ### Status popover
@@ -111,7 +112,8 @@ When no query is entered, the modal shows your **5 most recent queries** for ins
 The settings panel renders differently depending on index state:
 
 - **First run** (no collections) — a setup card with a **Register this vault** button. Runs `qmd collection add <vault> --name <name>` followed by `qmd embed`.
-- **Healthy** — a stats panel (docs · collections · embeddings · last indexed) and a collections table. Each row has a `⋯` menu with Rename, Re-index, and Remove.
+- **Partial** (lexical index built, no embeddings) — a yellow warning header with a primary **✨ Generate embeddings** button. Semantic and Hybrid modes are disabled until embeddings exist.
+- **Healthy** — a stats panel (docs · collections · embeddings · last indexed) and a collections table. Each row has a `⋯` menu with Re-index, Generate embeddings, and Remove.
 
 ### Options
 
@@ -122,8 +124,8 @@ The settings panel renders differently depending on index state:
 | `MCP daemon port` | `8181` | Port for the MCP HTTP daemon |
 | `Default collection` | *(all)* | Pre-selects a collection in the search modal |
 | `Default search mode` | Hybrid | Mode the modal opens with |
-| `Auto-reindex on save` | off | Re-indexes 30 s after a file is created, modified, or deleted |
-| `Reindex delay` | 30 s | How long to wait after the last change before triggering a reindex (5–120 s) |
+| `Auto-reindex on save` | off | Re-indexes after a file is created, modified, or deleted |
+| `Reindex delay` | 3 s | How long to wait after the last change before triggering a reindex (1 s–5 min) |
 | `Log level` | error | Console verbosity: `off` · `error` · `warn` · `debug` |
 
 ---

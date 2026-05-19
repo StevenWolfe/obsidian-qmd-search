@@ -1,0 +1,153 @@
+# Changelog
+
+All notable changes to QMD Search are documented here. Versions follow [Semantic Versioning](https://semver.org/). Release artifacts are on the [GitHub releases page](../../releases).
+
+---
+
+## [0.12.0] — 2026-05-19
+
+### Fixed
+- Settings panel auto-refreshes after Generate embeddings / Re-index completes — no manual navigate-away required
+- Status bar chip shows a pulsing `embedding…` or `indexing…` indicator for the full duration of long operations; button disables and shows `⏳` to prevent double-triggering
+
+---
+
+## [0.11.0] — 2026-05-19
+
+### Added
+- `IndexHealth` discriminated union (`empty` / `partial` / `stale` / `healthy` / `building` / `error`) as the single source of truth for index state across all surfaces
+- Status bar collapses to one chip — yellow dot + `N · no embeds` when embeddings are missing, resolving the conflicting broken-plug + green-dot indicator bug
+- Search modal: Semantic and Hybrid mode buttons disable with tooltip when embeddings are missing; warn banner with inline Generate button; footer reads `keyword (BM25) — fallback`
+- Status popover primary CTA adapts: `partial` → Generate embeddings, `healthy` → Re-index
+
+### Changed
+- Settings health card shows a yellow warning header `Index partial — embeddings missing` when `docs > 0` and `embeddings === 0`; primary CTA is Generate embeddings
+- `Generate embeddings` label used consistently everywhere (`Embed` retired)
+- qmd binary row: read-only chip with `Change…` edit-in-place; floating `resolved →` line removed
+- Build hash stripped from settings header pill; full version with hash moved to Advanced › About
+- Search modal anchors at `top: 15vh` (matches Quick Switcher), widens to `min(760px, 90vw)`
+- Reindex delay default changed from 30 s to 3 s; range extended from 5–120 s to 1 s–5 min
+- `candidateLimit` and `minScore` store `undefined` instead of `0`; placeholders read "Default (~40)" and "Default (disabled)"
+- Plugin version rendered as plain muted text; green version pill removed
+- Kebab `Remove` item gets a separator and `var(--text-error)` color
+
+---
+
+## [0.10.0] — 2026-05-18
+
+### Fixed
+- Onboarding shows on any new vault install, not only when qmd has zero collections globally
+- Default collection dropdown uses live `qmd status` collections instead of `index.yml`
+
+### Added
+- Embed action surfaced in status popover, health card, and collection `⋯` menu
+
+### Docs
+- SQLite native addon ABI mismatch troubleshooting added to CLAUDE.md and README
+
+---
+
+## [0.9.0] — 2026-05-16
+
+### Added
+- Configurable reindex debounce delay (5–120 s slider, default 30 s)
+
+### Docs
+- README rewritten for v1 UX — status bar, popover, onboarding, search modal, settings
+- Badges, Mermaid flow diagram, and design SVG diagrams added
+
+### Chore
+- Removed redundant `release.yml` (superseded by `ship.yml`)
+
+---
+
+## [0.8.0] — 2026-05-15
+
+### Added
+- `autoReindex` file watcher — debounced, respects the toggle setting
+- `OnboardingModal` — 4-step checklist for binary / vault / index / hotkey setup
+- `StatusPopover` — floating panel anchored above status bar, replaces StatusModal
+- Redesigned `SearchModal` with toolbar, keyboard nav, score bars, debounce, snippet highlighting, and empty state with recent queries + suggestion chips
+- Status bar with 5-state dot system; onboarding trigger; `recentQueries` persistence
+- `PluginStatus` type and `recentQueries` / `onboardingDone` / `autoReindex` settings
+
+### Changed
+- Complete CSS rewrite — Obsidian CSS variables only (no hardcoded colours)
+- `StatusModal` deleted; replaced by `StatusPopover`
+
+---
+
+## [0.7.0] — 2026-05-14
+
+### Fixed
+- Dropdown `onChange` values cast for TypeScript 6.0 contravariance
+
+### Chore
+- Bumped TypeScript to 6.0.3
+
+---
+
+## [0.6.0] — 2026-05-13
+
+### Fixed
+- Zip artifact and deploy path renamed to `obsidian-qmd-search`
+
+### Chore
+- Bumped `electron`, `@types/node`, `builtin-modules`
+
+---
+
+## [0.5.0] — 2026-05-12
+
+### Chore
+- Renamed plugin ID and all references from `qmd` to `obsidian-qmd-search`
+- Added Dependabot; bumped `esbuild`, `electron`
+
+---
+
+## [0.4.1] — 2026-05-11
+
+### Fixed
+- `ship.yml` opens a PR for the version bump (main is PR-protected)
+- `collectionSelectEl` declared as `| undefined` to satisfy tsc
+
+### Added
+- Re-index / Embed / Refresh buttons in the Status modal
+
+---
+
+## [0.4.0] — 2026-05-10
+
+### Fixed
+- Index name reverted to text field in Advanced — `qmd` has no index list command
+
+---
+
+## [0.3.0] — 2026-05-09
+
+### Added
+- Dropdowns for index / collection selection
+- Index management section
+- Status bar item
+
+---
+
+## [0.2.1] — 2026-05-08
+
+### Added
+- `--min-score` filter setting
+- Collapsible Advanced settings section
+
+---
+
+## [0.2.0] — 2026-05-07
+
+### Added
+- `--no-rerank` toggle
+- `-C` candidate limit setting
+
+---
+
+## [0.1.x] — 2026-04-27 to 2026-05-06
+
+Initial implementation: CLI and MCP-HTTP transports, basic search modal, settings panel, collection management, `qmd status` parsing, PATH resolution for Electron renderer, esbuild bundling, GitHub Actions ship workflow.

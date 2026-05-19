@@ -5,6 +5,6 @@
   "minAppVersion": "1.0.0",
   "description": "Local semantic and keyword search over qmd-indexed knowledge bases.",
   "author": "StevenWolfe",
-  "authorUrl": "",
+  "authorUrl": "https://github.com/StevenWolfe",
   "isDesktopOnly": true
 }
