@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { execFile } = require('child_process') as typeof import('child_process');
 
-import { Notice, Plugin } from 'obsidian';
+import { Notice, Plugin, TAbstractFile } from 'obsidian';
 import { DEFAULT_SETTINGS, QmdSearchSettings, QmdSettingTab } from './settings';
 import { setLogLevel, log } from './util/log';
 import { buildEnv, initShellContext } from './util/env';
@@ -16,6 +16,7 @@ import type { PluginStatus } from './client/types';
 const STATUS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const TRANSIENT_DURATION_MS = 3000;
 const MAX_RECENT_QUERIES = 5;
+const AUTO_REINDEX_DEBOUNCE_MS = 30_000;
 
 export default class QmdSearchPlugin extends Plugin {
   settings!: QmdSearchSettings;
@@ -29,6 +30,7 @@ export default class QmdSearchPlugin extends Plugin {
   private statusBarItem!: HTMLElement;
   private statusPopover: StatusPopover | null = null;
   private transientTimer: number | null = null;
+  private reindexTimer: number | null = null;
   private lastIdleStatus: PluginStatus & { kind: 'idle' } | null = null;
 
   async onload(): Promise<void> {
@@ -47,6 +49,12 @@ export default class QmdSearchPlugin extends Plugin {
     // Initial status bar population after a short delay (client may be warming up)
     setTimeout(() => this.refreshStatusBar(), 3000);
     this.registerInterval(window.setInterval(() => this.refreshStatusBar(), STATUS_REFRESH_INTERVAL_MS));
+
+    // Auto-reindex: watch for markdown file changes and debounce a re-index run
+    const onVaultChange = (f: TAbstractFile) => { if (f.path.endsWith('.md')) this.scheduleReindex(); };
+    this.registerEvent(this.app.vault.on('create', onVaultChange));
+    this.registerEvent(this.app.vault.on('modify', onVaultChange));
+    this.registerEvent(this.app.vault.on('delete', onVaultChange));
 
     this.addCommand({
       id: 'qmd-search',
@@ -90,7 +98,20 @@ export default class QmdSearchPlugin extends Plugin {
       this.statusPopover.close();
       this.statusPopover = null;
     }
+    if (this.reindexTimer !== null) {
+      window.clearTimeout(this.reindexTimer);
+      this.reindexTimer = null;
+    }
     await this.client.dispose();
+  }
+
+  private scheduleReindex(): void {
+    if (!this.settings.autoReindex) return;
+    if (this.reindexTimer !== null) window.clearTimeout(this.reindexTimer);
+    this.reindexTimer = window.setTimeout(() => {
+      this.reindexTimer = null;
+      void this.reindex();
+    }, AUTO_REINDEX_DEBOUNCE_MS);
   }
 
   async loadSettings(): Promise<void> {
