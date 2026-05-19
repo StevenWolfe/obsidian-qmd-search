@@ -205,7 +205,7 @@ export class QmdSettingTab extends PluginSettingTab {
 
     // ── Default collection (dropdown) ────────────────────────
     const collectionNames = loadCollectionNames();
-    let collectionSelectEl: HTMLSelectElement;
+    let collectionSelectEl: HTMLSelectElement | undefined;
     new Setting(containerEl)
       .setName('Default collection')
       .setDesc('Pre-selected collection in the search modal. "All" searches every collection.')
