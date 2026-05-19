@@ -7,12 +7,13 @@ const os = require('os') as typeof import('os');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path') as typeof import('path');
 
-import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Menu, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type QmdSearchPlugin from './main';
-import { StatusModal } from './ui/StatusModal';
 import { type LogLevel, setLogLevel, log } from './util/log';
 import { buildEnv, resolveQmdBinary } from './util/env';
 import { loadCollectionNames } from './util/config';
+import { SearchModal } from './ui/SearchModal';
+import type { QmdStatus } from './client/types';
 
 export interface QmdSearchSettings {
   qmdBinaryPath: string;
@@ -25,6 +26,9 @@ export interface QmdSearchSettings {
   candidateLimit: number;
   minScore: number;
   logLevel: LogLevel;
+  recentQueries: string[];
+  onboardingDone: boolean;
+  autoReindex: boolean;
 }
 
 export const DEFAULT_SETTINGS: QmdSearchSettings = {
@@ -38,6 +42,9 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   candidateLimit: 0,
   minScore: 0,
   logLevel: 'error',
+  recentQueries: [],
+  onboardingDone: false,
+  autoReindex: false,
 };
 
 function runVersion(binary: string): Promise<string> {
@@ -62,7 +69,6 @@ function populateSelect(sel: HTMLSelectElement, options: { value: string; label:
     opt.value = value; opt.text = label;
     sel.add(opt);
   }
-  // If saved value isn't in the list, add it so it doesn't disappear
   if (current && !allValues.includes(current)) {
     const opt = document.createElement('option');
     opt.value = current; opt.text = current;
@@ -71,7 +77,7 @@ function populateSelect(sel: HTMLSelectElement, options: { value: string; label:
   sel.value = current;
 }
 
-class CollectionNameModal extends Modal {
+export class CollectionNameModal extends Modal {
   private resolved = false;
 
   constructor(
@@ -124,69 +130,8 @@ class CollectionNameModal extends Modal {
 }
 
 export class QmdSettingTab extends PluginSettingTab {
-  private statusEl: HTMLElement | null = null;
-
   constructor(app: App, private readonly plugin: QmdSearchPlugin) {
     super(app, plugin);
-  }
-
-  renderStatus(): void {
-    const el = this.statusEl;
-    if (!el?.isConnected) return;
-
-    if (this.plugin.resolvedBinaryPath === 'qmd') {
-      el.empty();
-      el.createEl('p', { text: 'qmd not found — set binary path above.', cls: 'qmd-muted' });
-      return;
-    }
-
-    el.empty();
-    el.createEl('p', { text: 'Checking…', cls: 'qmd-muted' });
-
-    this.plugin.client.status().then((s) => {
-      if (!el.isConnected) return;
-      el.empty();
-      const health = el.createDiv({ cls: 'qmd-status-health' });
-      health.createEl('span', {
-        text: s.healthy ? '✓ Healthy' : '✗ Unhealthy',
-        cls: s.healthy ? 'qmd-status-ok' : 'qmd-status-err',
-      });
-      if (s.message) health.createEl('span', { text: ` — ${s.message}`, cls: 'qmd-status-message' });
-
-      if (s.indexPath || s.indexSize) {
-        const meta = el.createDiv({ cls: 'qmd-status-meta' });
-        if (s.indexPath) meta.createEl('span', { text: s.indexPath.split('/').pop() ?? s.indexPath });
-        if (s.indexSize) meta.createEl('span', { text: ` (${s.indexSize})`, cls: 'qmd-muted' });
-      }
-      if (s.totalDocs !== undefined || s.totalVectors !== undefined) {
-        const parts: string[] = [];
-        if (s.totalDocs !== undefined) parts.push(`${s.totalDocs} docs`);
-        if (s.totalVectors !== undefined) parts.push(`${s.totalVectors} vectors`);
-        el.createEl('p', { text: parts.join(' · '), cls: 'qmd-status-docs-line qmd-muted' });
-      }
-
-      if (s.collections.length === 0) {
-        el.createEl('p', { text: 'No collections registered.', cls: 'qmd-muted' });
-        return;
-      }
-      const table = el.createEl('table', { cls: 'qmd-status-table' });
-      const head = table.createEl('thead').createEl('tr');
-      head.createEl('th', { text: 'Collection' });
-      head.createEl('th', { text: 'Docs' });
-      head.createEl('th', { text: 'Last indexed' });
-      const tbody = table.createEl('tbody');
-      for (const col of s.collections) {
-        const row = tbody.createEl('tr');
-        row.createEl('td', { text: col.name });
-        row.createEl('td', { text: String(col.docCount) });
-        row.createEl('td', { text: col.lastIndexed ?? '—' });
-      }
-    }).catch((err: Error) => {
-      log.error('status failed:', err.message);
-      if (!el.isConnected) return;
-      el.empty();
-      el.createEl('p', { text: `Status error: ${err.message}`, cls: 'qmd-error' });
-    });
   }
 
   display(): void {
@@ -194,20 +139,306 @@ export class QmdSettingTab extends PluginSettingTab {
     const wasAdvancedOpen =
       (containerEl.querySelector('.qmd-advanced-section') as HTMLDetailsElement | null)?.open ?? false;
     containerEl.empty();
+    containerEl.addClass('qmd-settings');
 
-    containerEl.createEl('p', {
+    // ── Header ────────────────────────────────────────────────
+    const header = containerEl.createDiv({ cls: 'qmd-settings-header' });
+    header.createEl('h2', { text: 'QMD Search', cls: 'qmd-settings-title' });
+    const headerMeta = header.createDiv({ cls: 'qmd-settings-meta' });
+    headerMeta.createEl('span', {
+      cls: 'qmd-version-pill',
       text: `plugin v${this.plugin.manifest.version}`,
-      cls: 'qmd-plugin-version',
     });
 
-    // ── Binary path ──────────────────────────────────────────
-    const versionEl = containerEl.createEl('p', { cls: 'qmd-version-hint' });
+    // Header action buttons (will add Re-index and Search after status loads)
+    const headerActions = header.createDiv({ cls: 'qmd-settings-header-actions' });
+
+    // Binary status pill (async)
+    const binaryPill = headerMeta.createEl('span', { cls: 'qmd-binary-pill qmd-binary-pill--checking', text: 'checking…' });
+    if (this.plugin.resolvedBinaryPath !== 'qmd') {
+      runVersion(this.plugin.resolvedBinaryPath).then((v) => {
+        if (!binaryPill.isConnected) return;
+        binaryPill.setText(`binary OK · ${v}`);
+        binaryPill.removeClass('qmd-binary-pill--checking');
+        binaryPill.addClass('qmd-binary-pill--ok');
+      }).catch(() => {
+        if (!binaryPill.isConnected) return;
+        binaryPill.setText('binary error');
+        binaryPill.removeClass('qmd-binary-pill--checking');
+        binaryPill.addClass('qmd-binary-pill--err');
+      });
+    } else {
+      binaryPill.setText('binary not found');
+      binaryPill.removeClass('qmd-binary-pill--checking');
+      binaryPill.addClass('qmd-binary-pill--err');
+    }
+
+    // ── Async content area ────────────────────────────────────
+    const contentArea = containerEl.createDiv({ cls: 'qmd-settings-content' });
+    contentArea.createEl('p', { cls: 'qmd-loading', text: 'Loading index status…' });
+
+    // Fetch status and render appropriate layout
+    this.plugin.client.status().then((status) => {
+      if (!contentArea.isConnected) return;
+      contentArea.empty();
+
+      if (status.collections.length === 0) {
+        this.renderFirstRun(contentArea, wasAdvancedOpen);
+      } else {
+        // Add Re-index and Search buttons to header
+        const reindexBtn = headerActions.createEl('button', { cls: 'qmd-header-btn', text: 'Re-index ↺' });
+        reindexBtn.addEventListener('click', async () => {
+          reindexBtn.disabled = true;
+          reindexBtn.textContent = 'Re-indexing…';
+          await this.plugin.reindex();
+          if (reindexBtn.isConnected) {
+            reindexBtn.disabled = false;
+            reindexBtn.textContent = 'Re-index ↺';
+          }
+          this.display();
+        });
+        const searchBtn = headerActions.createEl('button', { cls: 'qmd-header-btn mod-cta', text: 'Search… ⌘K' });
+        searchBtn.addEventListener('click', () => {
+          new SearchModal(this.app, this.plugin.client, this.plugin.settings, this.plugin).open();
+        });
+
+        this.renderHealthy(contentArea, status, wasAdvancedOpen);
+      }
+    }).catch((err: Error) => {
+      log.error('settings status failed:', err.message);
+      if (!contentArea.isConnected) return;
+      contentArea.empty();
+      this.renderFirstRun(contentArea, wasAdvancedOpen, err.message);
+    });
+  }
+
+  private renderFirstRun(container: HTMLElement, wasAdvancedOpen: boolean, errorMsg?: string): void {
+    // Empty state card
+    const card = container.createDiv({ cls: 'qmd-empty-card' });
+    card.createEl('div', { cls: 'qmd-empty-card-icon', text: '🗄' });
+    const cardBody = card.createDiv({ cls: 'qmd-empty-card-body' });
+    cardBody.createEl('strong', { text: 'Index your vault to start searching' });
+    cardBody.createEl('p', {
+      cls: 'qmd-muted',
+      text: errorMsg
+        ? `Error: ${errorMsg}`
+        : 'QMD hasn\'t seen this vault yet. Indexing runs locally and takes about 30s per 1,000 notes.',
+    });
+    const indexBtn = card.createEl('button', { cls: 'mod-cta', text: 'Index this vault' });
+    indexBtn.addEventListener('click', async () => {
+      const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
+      const vaultName = this.app.vault.getName();
+
+      const name = await new Promise<string | null>((resolve) => {
+        new CollectionNameModal(this.app, vaultName, resolve).open();
+      });
+      if (!name) return;
+
+      indexBtn.disabled = true;
+      indexBtn.textContent = 'Registering…';
+      new Notice(`QMD: registering collection "${name}"…`);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          execFile(
+            this.plugin.resolvedBinaryPath,
+            ['collection', 'add', vaultPath, '--name', name],
+            { timeout: 30_000, env: buildEnv() },
+            (err) => (err ? reject(err) : resolve()),
+          );
+        });
+        new Notice(`QMD: generating embeddings for "${name}"…`);
+        await this.plugin.embed();
+        new Notice(`QMD: vault registered as "${name}" ✓`);
+        this.display();
+      } catch (err) {
+        new Notice(`QMD: registration failed — ${(err as Error).message}`);
+        if (indexBtn.isConnected) {
+          indexBtn.disabled = false;
+          indexBtn.textContent = 'Index this vault';
+        }
+      }
+    });
+
+    this.renderGeneralSettings(container);
+    this.renderAdvancedSection(container, wasAdvancedOpen);
+  }
+
+  private renderHealthy(container: HTMLElement, status: QmdStatus, wasAdvancedOpen: boolean): void {
+    // Status card
+    const card = container.createDiv({ cls: 'qmd-health-card' });
+    const cardHeader = card.createDiv({ cls: 'qmd-health-card-header' });
+    const dot = cardHeader.createSpan({ cls: 'qmd-dot qmd-dot--ok' });
+    void dot;
+    cardHeader.createEl('strong', { text: 'Index healthy' });
+
+    const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
+    const totalVectors = status.totalVectors ?? 0;
+    const lastIndexed = status.collections[0]?.lastIndexed;
+
+    if (lastIndexed) {
+      cardHeader.createEl('span', {
+        cls: 'qmd-health-meta',
+        text: `Last indexed ${lastIndexed}`,
+      });
+    }
+
+    // Stats row
+    const statsRow = card.createDiv({ cls: 'qmd-health-stats' });
+    const statItems: [string, string][] = [
+      ['Documents', totalDocs.toLocaleString()],
+      ['Collections', String(status.collections.length)],
+      ['Embeddings', totalVectors.toLocaleString()],
+    ];
+    if (status.indexSize) statItems.push(['Disk', status.indexSize]);
+    for (const [label, value] of statItems) {
+      const stat = statsRow.createDiv({ cls: 'qmd-health-stat' });
+      stat.createEl('div', { cls: 'qmd-health-stat-label', text: label });
+      stat.createEl('div', { cls: 'qmd-health-stat-value', text: value });
+    }
+
+    // ── Collections section ────────────────────────────────────
+    const collSection = container.createDiv({ cls: 'qmd-settings-section' });
+    const collHeader = collSection.createDiv({ cls: 'qmd-section-header' });
+    collHeader.createEl('span', { cls: 'qmd-section-title', text: 'Collections' });
+    const addBtn = collHeader.createEl('button', { cls: 'qmd-section-btn', text: '+ Add collection' });
+    addBtn.addEventListener('click', async () => {
+      const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
+      const vaultName = this.app.vault.getName();
+      const name = await new Promise<string | null>((resolve) => {
+        new CollectionNameModal(this.app, vaultName, resolve).open();
+      });
+      if (!name) return;
+      new Notice(`QMD: registering "${name}"…`);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          execFile(
+            this.plugin.resolvedBinaryPath,
+            ['collection', 'add', vaultPath, '--name', name],
+            { timeout: 30_000, env: buildEnv() },
+            (err) => (err ? reject(err) : resolve()),
+          );
+        });
+        new Notice(`QMD: "${name}" registered ✓`);
+        this.display();
+      } catch (err) {
+        new Notice(`QMD: failed — ${(err as Error).message}`);
+      }
+    });
+
+    const collList = collSection.createDiv({ cls: 'qmd-collection-list' });
+    for (const col of status.collections) {
+      const row = collList.createDiv({ cls: 'qmd-collection-row' });
+      row.createEl('span', { cls: 'qmd-col-icon', text: '🗄' });
+      row.createEl('span', { cls: 'qmd-col-name', text: col.name });
+      row.createEl('span', { cls: 'qmd-col-docs qmd-muted', text: `${col.docCount.toLocaleString()} docs` });
+      if (col.lastIndexed) {
+        row.createEl('span', { cls: 'qmd-col-time qmd-muted', text: col.lastIndexed });
+      }
+      const menuBtn = row.createEl('button', { cls: 'qmd-col-menu', text: '⋯' });
+      menuBtn.addEventListener('click', (e: MouseEvent) => {
+        const menu = new Menu();
+        menu.addItem((item) => {
+          item.setTitle('Re-index').onClick(async () => {
+            new Notice(`QMD: re-indexing "${col.name}"…`);
+            await this.plugin.reindex();
+            this.display();
+          });
+        });
+        menu.addItem((item) => {
+          item.setTitle('Remove').onClick(async () => {
+            new Notice(`QMD: removing collection "${col.name}"…`);
+            try {
+              await new Promise<void>((resolve, reject) => {
+                execFile(
+                  this.plugin.resolvedBinaryPath,
+                  ['collection', 'remove', col.name],
+                  { timeout: 10_000, env: buildEnv() },
+                  (err) => (err ? reject(err) : resolve()),
+                );
+              });
+              new Notice(`QMD: removed "${col.name}" ✓`);
+              this.display();
+            } catch (err) {
+              new Notice(`QMD: remove failed — ${(err as Error).message}`);
+            }
+          });
+        });
+        menu.showAtMouseEvent(e);
+      });
+    }
+
+    this.renderGeneralSettings(container);
+    this.renderAdvancedSection(container, wasAdvancedOpen);
+  }
+
+  private renderGeneralSettings(container: HTMLElement): void {
+    const section = container.createDiv({ cls: 'qmd-settings-section' });
+    section.createEl('div', { cls: 'qmd-section-title', text: 'General' });
+
+    // Default search mode
+    new Setting(section)
+      .setName('Default search mode')
+      .addDropdown((dd) => {
+        dd.addOption('keyword', 'Keyword')
+          .addOption('semantic', 'Semantic')
+          .addOption('hybrid', 'Hybrid (default)')
+          .setValue(this.plugin.settings.defaultSearchMode)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultSearchMode = value as 'keyword' | 'semantic' | 'hybrid';
+            await this.plugin.saveSettings(false);
+          });
+      });
+
+    // Default collection
+    const collectionNames = loadCollectionNames();
+    let collectionSelectEl: HTMLSelectElement | undefined;
+    new Setting(section)
+      .setName('Default collection')
+      .setDesc('Pre-selected collection in the search modal.')
+      .addDropdown((dd) => {
+        collectionSelectEl = dd.selectEl;
+        dd.addOption('', 'All collections');
+        for (const name of collectionNames) dd.addOption(name, name);
+        if (this.plugin.settings.defaultCollection && !collectionNames.includes(this.plugin.settings.defaultCollection)) {
+          dd.addOption(this.plugin.settings.defaultCollection, this.plugin.settings.defaultCollection);
+        }
+        dd.setValue(this.plugin.settings.defaultCollection);
+        dd.onChange(async (value) => {
+          this.plugin.settings.defaultCollection = value;
+          await this.plugin.saveSettings(false);
+        });
+      });
+    void (async () => {
+      const names = loadCollectionNames();
+      if (!collectionSelectEl?.isConnected || names.length === 0) return;
+      populateSelect(
+        collectionSelectEl,
+        [{ value: '', label: 'All collections' }, ...names.map((n) => ({ value: n, label: n }))],
+        this.plugin.settings.defaultCollection,
+      );
+    })();
+
+    // Auto-reindex
+    new Setting(section)
+      .setName('Auto-reindex on save')
+      .setDesc('Re-index collections automatically when a note is saved.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoReindex)
+          .onChange(async (value) => {
+            this.plugin.settings.autoReindex = value;
+            await this.plugin.saveSettings(false);
+          }),
+      );
+
+    // qmd binary path
+    const versionEl = section.createEl('p', { cls: 'qmd-version-hint' });
     if (this.plugin.resolvedBinaryPath !== 'qmd' && this.plugin.settings.qmdBinaryPath === 'qmd') {
       versionEl.setText(`resolved → ${this.plugin.resolvedBinaryPath}`);
       versionEl.addClass('qmd-version-ok');
     }
     let binaryInputEl: HTMLInputElement;
-    new Setting(containerEl)
+    new Setting(section)
       .setName('qmd binary path')
       .setDesc('Path to the qmd executable. Leave as "qmd" to auto-detect.')
       .addText((text) => {
@@ -230,7 +461,6 @@ export class QmdSettingTab extends PluginSettingTab {
             versionEl.removeClass('qmd-version-ok');
             versionEl.addClass('qmd-version-error');
           }
-          this.renderStatus();
         });
       })
       .addButton((btn) => {
@@ -253,7 +483,6 @@ export class QmdSettingTab extends PluginSettingTab {
                 versionEl.setText(`Found at ${resolved} but --version failed`);
                 versionEl.addClass('qmd-version-ok');
               }
-              this.renderStatus();
             } else {
               versionEl.setText('✗ Could not find qmd — set path manually');
               versionEl.removeClass('qmd-version-ok');
@@ -267,162 +496,11 @@ export class QmdSettingTab extends PluginSettingTab {
           }
         });
       });
+  }
 
-    // ── Default collection (dropdown) ────────────────────────
-    const collectionNames = loadCollectionNames();
-    let collectionSelectEl: HTMLSelectElement | undefined;
-    new Setting(containerEl)
-      .setName('Default collection')
-      .setDesc('Pre-selected collection in the search modal. "All" searches every collection.')
-      .addDropdown((dd) => {
-        collectionSelectEl = dd.selectEl;
-        dd.addOption('', 'All collections');
-        for (const name of collectionNames) dd.addOption(name, name);
-        if (this.plugin.settings.defaultCollection && !collectionNames.includes(this.plugin.settings.defaultCollection)) {
-          dd.addOption(this.plugin.settings.defaultCollection, this.plugin.settings.defaultCollection);
-        }
-        dd.setValue(this.plugin.settings.defaultCollection);
-        dd.onChange(async (value) => {
-          this.plugin.settings.defaultCollection = value;
-          await this.plugin.saveSettings(false);
-        });
-      });
-    // Keep the collection list fresh from config
-    void (async () => {
-      const names = loadCollectionNames();
-      if (!collectionSelectEl?.isConnected || names.length === 0) return;
-      populateSelect(
-        collectionSelectEl,
-        [{ value: '', label: 'All collections' }, ...names.map((n) => ({ value: n, label: n }))],
-        this.plugin.settings.defaultCollection,
-      );
-    })();
-
-    // ── Default search mode ──────────────────────────────────
-    new Setting(containerEl)
-      .setName('Default search mode')
-      .addDropdown((dd) => {
-        dd.addOption('keyword', 'Keyword')
-          .addOption('semantic', 'Semantic')
-          .addOption('hybrid', 'Hybrid (default)')
-          .setValue(this.plugin.settings.defaultSearchMode)
-          .onChange(async (value) => {
-            this.plugin.settings.defaultSearchMode = value as 'keyword' | 'semantic' | 'hybrid';
-            await this.plugin.saveSettings(false);
-          });
-      });
-
-    // ── Index management ─────────────────────────────────────
-    new Setting(containerEl).setName('Index').setHeading();
-    this.statusEl = containerEl.createDiv({ cls: 'qmd-status-inline' });
-    this.renderStatus();
-
-    const actionRow = containerEl.createDiv({ cls: 'qmd-action-row' });
-
-    const reindexBtn = actionRow.createEl('button', { text: 'Re-index', cls: 'mod-cta' });
-    reindexBtn.addEventListener('click', async () => {
-      reindexBtn.disabled = true;
-      reindexBtn.textContent = 'Re-indexing…';
-      await this.plugin.reindex();
-      if (reindexBtn.isConnected) {
-        reindexBtn.disabled = false;
-        reindexBtn.textContent = 'Re-index';
-      }
-      this.renderStatus();
-    });
-
-    const embedBtn = actionRow.createEl('button', { text: 'Embed' });
-    embedBtn.addEventListener('click', async () => {
-      embedBtn.disabled = true;
-      embedBtn.textContent = 'Embedding…';
-      await this.plugin.embed();
-      if (embedBtn.isConnected) {
-        embedBtn.disabled = false;
-        embedBtn.textContent = 'Embed';
-      }
-      this.renderStatus();
-    });
-
-    const refreshBtn = actionRow.createEl('button', { text: 'Refresh' });
-    refreshBtn.addEventListener('click', () => {
-      this.renderStatus();
-      this.plugin.refreshStatusBar();
-    });
-
-    const statusBtn = actionRow.createEl('button', { text: 'Full status' });
-    statusBtn.addEventListener('click', () => new StatusModal(this.app, this.plugin).open());
-
-    // ── Register vault as collection ─────────────────────────
-    new Setting(containerEl)
-      .setName('Register vault as collection')
-      .setDesc('Index this vault with qmd so it appears in search.')
-      .addButton((btn) => {
-        btn.setButtonText('Register…').onClick(async () => {
-          const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
-          const vaultName = this.app.vault.getName();
-
-          const name = await new Promise<string | null>((resolve) => {
-            new CollectionNameModal(this.app, vaultName, resolve).open();
-          });
-          if (!name) return;
-
-          btn.setDisabled(true);
-          new Notice(`QMD: registering collection "${name}"…`);
-          try {
-            await new Promise<void>((resolve, reject) => {
-              execFile(
-                this.plugin.resolvedBinaryPath,
-                ['collection', 'add', vaultPath, '--name', name],
-                { timeout: 30_000, env: buildEnv() },
-                (err) => (err ? reject(err) : resolve()),
-              );
-            });
-
-            new Notice(`QMD: generating embeddings for "${name}"…`);
-            await new Promise<void>((resolve, reject) => {
-              execFile(
-                this.plugin.resolvedBinaryPath,
-                ['embed'],
-                { timeout: 600_000, env: buildEnv() },
-                (err) => (err ? reject(err) : resolve()),
-              );
-            });
-
-            new Notice(`QMD: vault registered as "${name}" ✓`);
-            this.renderStatus();
-          } catch (err) {
-            new Notice(`QMD: registration failed — ${(err as Error).message}`);
-          } finally {
-            if (btn.buttonEl.isConnected) btn.setDisabled(false);
-          }
-        });
-      });
-
-    // ── Open index config ────────────────────────────────────
-    new Setting(containerEl)
-      .setName('Open index config')
-      .setDesc('Open ~/.config/qmd/index.yml in the system default app.')
-      .addButton((btn) => {
-        btn.setButtonText('Open config').onClick(async () => {
-          const configPath = path.join(os.homedir(), '.config', 'qmd', 'index.yml');
-          const configDir = path.dirname(configPath);
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const { shell } = require('electron') as typeof import('electron');
-          const target = fs.existsSync(configPath) ? configPath
-            : fs.existsSync(configDir) ? configDir
-            : null;
-          if (!target) {
-            new Notice('QMD: ~/.config/qmd/ not found — install qmd first.');
-            return;
-          }
-          const err = await shell.openPath(target);
-          if (err) new Notice(`QMD: failed to open config — ${err}`);
-        });
-      });
-
-    // ── Advanced (collapsible) ───────────────────────────────
-    const advancedEl = containerEl.createEl('details', { cls: 'qmd-advanced-section' });
-    if (wasAdvancedOpen) advancedEl.open = true;
+  private renderAdvancedSection(container: HTMLElement, wasOpen: boolean): void {
+    const advancedEl = container.createEl('details', { cls: 'qmd-advanced-section' });
+    if (wasOpen) advancedEl.open = true;
     advancedEl.createEl('summary', { text: 'Advanced', cls: 'qmd-advanced-summary' });
 
     new Setting(advancedEl)
@@ -435,7 +513,6 @@ export class QmdSettingTab extends PluginSettingTab {
           .onChange((value) => { this.plugin.settings.indexName = value.trim(); });
         text.inputEl.addEventListener('blur', async () => {
           await this.plugin.saveSettings();
-          this.renderStatus();
         });
       });
 
@@ -527,5 +604,24 @@ export class QmdSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings(false);
           }),
       );
+
+    // Open config folder (safe — opens folder, not the file)
+    new Setting(advancedEl)
+      .setName('Open config folder')
+      .setDesc('Open ~/.config/qmd/ in the system file manager.')
+      .addButton((btn) => {
+        btn.setButtonText('Open folder').onClick(async () => {
+          const configDir = path.join(os.homedir(), '.config', 'qmd');
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { shell } = require('electron') as typeof import('electron');
+          const target = fs.existsSync(configDir) ? configDir : null;
+          if (!target) {
+            new Notice('QMD: ~/.config/qmd/ not found — install qmd first.');
+            return;
+          }
+          const err = await shell.openPath(target);
+          if (err) new Notice(`QMD: failed to open folder — ${err}`);
+        });
+      });
   }
 }

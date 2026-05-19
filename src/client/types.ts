@@ -67,6 +67,14 @@ export interface QmdStatus {
   cpuCores?: string;
 }
 
+export type PluginStatus =
+  | { kind: 'unresolved' }
+  | { kind: 'empty' }
+  | { kind: 'idle'; docs: number; collections: number; embeddings: number; lastIndexed?: string }
+  | { kind: 'indexing'; done: number; total: number }
+  | { kind: 'error'; detail: string; code: 'binary_missing' | 'index_corrupt' | 'qmd_crash' }
+  | { kind: 'transient'; results: number; ms: number };
+
 export type SearchMode = 'keyword' | 'semantic' | 'hybrid';
 
 export interface SearchOptions {
