@@ -40,6 +40,7 @@ export class SearchModal extends Modal {
   private resultsEl!: HTMLElement;
   private statusLine!: HTMLElement;
   private footerMode!: HTMLElement;
+  private embeddingsAvailable = true;
 
   // For keyboard navigation
   private focusedIndex = -1;
@@ -56,7 +57,16 @@ export class SearchModal extends Modal {
     private readonly plugin: QmdSearchPlugin,
   ) {
     super(app);
-    this.activeMode = settings.defaultSearchMode;
+    // Determine if embeddings are available from current plugin status
+    const ps = plugin.pluginStatus;
+    if (ps.kind === 'idle') {
+      this.embeddingsAvailable = ps.health.kind !== 'partial' && ps.health.kind !== 'empty';
+    }
+    // Coerce mode to keyword if embeddings not available
+    const desired = settings.defaultSearchMode;
+    this.activeMode = (!this.embeddingsAvailable && (desired === 'semantic' || desired === 'hybrid'))
+      ? 'keyword'
+      : desired;
   }
 
   onOpen(): void {
@@ -77,28 +87,40 @@ export class SearchModal extends Modal {
     // ── Toolbar ────────────────────────────────────────────────
     const toolbar = contentEl.createDiv({ cls: 'qmd-toolbar' });
 
-    // Mode segmented control
+    // Mode segmented control — disable Semantic/Hybrid when embeddings missing (#10)
     const modeGroup = toolbar.createDiv({ cls: 'qmd-mode-group' });
     for (const [label, value] of [
       ['Keyword', 'keyword'],
       ['Semantic', 'semantic'],
       ['Hybrid', 'hybrid'],
     ] as [string, SearchMode][]) {
+      const needsEmbeds = value === 'semantic' || value === 'hybrid';
+      const disabled = needsEmbeds && !this.embeddingsAvailable;
       const btn = modeGroup.createEl('button', { text: label, cls: 'qmd-mode-btn' });
       if (value === this.activeMode) btn.addClass('qmd-mode-btn--active');
-      btn.addEventListener('click', () => {
-        this.activeMode = value;
-        modeGroup.querySelectorAll('.qmd-mode-btn').forEach((b) => b.classList.remove('qmd-mode-btn--active'));
-        btn.addClass('qmd-mode-btn--active');
-        this.footerMode.setText(label);
-        if (this.queryInput.value.trim()) this.scheduleSearch();
-      });
+      if (disabled) {
+        btn.addClass('qmd-mode-btn--disabled');
+        btn.setAttribute('title', 'Generate embeddings first');
+        btn.setAttribute('aria-disabled', 'true');
+      } else {
+        btn.addEventListener('click', () => {
+          this.activeMode = value;
+          modeGroup.querySelectorAll('.qmd-mode-btn').forEach((b) => b.classList.remove('qmd-mode-btn--active'));
+          btn.addClass('qmd-mode-btn--active');
+          this.updateFooterMode();
+          if (this.queryInput.value.trim()) this.scheduleSearch();
+        });
+      }
     }
 
     // "in" label + collection select
     toolbar.createEl('span', { cls: 'qmd-toolbar-in', text: 'in' });
     this.collectionSelect = toolbar.createEl('select', { cls: 'qmd-collection-select' });
     this.collectionSelect.createEl('option', { value: '', text: 'All collections' });
+    // Prefer live collection names from plugin status, fall back to index.yml
+    const ps = this.plugin.pluginStatus;
+    const liveCollections = ps.kind === 'idle' ? ps.collections : 0;
+    void liveCollections;
     for (const name of loadCollectionNames()) {
       this.collectionSelect.createEl('option', { value: name, text: name });
     }
@@ -112,6 +134,20 @@ export class SearchModal extends Modal {
     // Status chip (shows result count or is empty)
     this.statusLine = toolbar.createEl('span', { cls: 'qmd-status-chip' });
 
+    // ── Embeddings warn banner (#10) ────────────────────────────
+    if (!this.embeddingsAvailable) {
+      const banner = contentEl.createDiv({ cls: 'qmd-embeds-warn-banner' });
+      banner.createSpan({ text: 'Semantic & Hybrid are disabled until embeddings are built.' });
+      const generateBtn = banner.createEl('button', {
+        cls: 'qmd-embeds-generate-btn',
+        text: '✨ Generate',
+      });
+      generateBtn.addEventListener('click', () => {
+        this.close();
+        void this.plugin.embed();
+      });
+    }
+
     // ── Results / empty state ──────────────────────────────────
     this.resultsEl = contentEl.createDiv({ cls: 'qmd-results' });
     this.renderEmptyState();
@@ -123,17 +159,27 @@ export class SearchModal extends Modal {
     footer.createEl('span', { cls: 'qmd-footer-hint', text: '↵ open' });
     footer.createEl('span', { cls: 'qmd-footer-sep', text: '·' });
     footer.createEl('span', { cls: 'qmd-footer-hint', text: '⌘↵ new tab' });
-    const modeLabel = (['keyword', 'semantic', 'hybrid'] as SearchMode[]).find((m) => m === this.activeMode) ?? 'hybrid';
-    this.footerMode = footer.createEl('span', {
-      cls: 'qmd-footer-mode',
-      text: modeLabel.charAt(0).toUpperCase() + modeLabel.slice(1),
-    });
+    this.footerMode = footer.createEl('span', { cls: 'qmd-footer-mode' });
+    this.updateFooterMode();
 
     // ── Event listeners ────────────────────────────────────────
     this.queryInput.addEventListener('input', () => this.scheduleSearch());
     this.queryInput.addEventListener('keydown', (e: KeyboardEvent) => this.handleKeydown(e));
 
     this.queryInput.focus();
+  }
+
+  private updateFooterMode(): void {
+    if (!this.footerMode) return;
+    if (!this.embeddingsAvailable && (this.activeMode === 'semantic' || this.activeMode === 'hybrid')) {
+      this.footerMode.setText('keyword (BM25) — fallback');
+    } else if (this.activeMode === 'hybrid') {
+      this.footerMode.setText('hybrid · BM25 + vectors + rerank');
+    } else if (this.activeMode === 'semantic') {
+      this.footerMode.setText('semantic · vectors');
+    } else {
+      this.footerMode.setText('keyword (BM25)');
+    }
   }
 
   private scheduleSearch(): void {
@@ -234,14 +280,20 @@ export class SearchModal extends Modal {
     let results: QmdResult[] | null = null;
     let searchError: Error | null = null;
 
+    // Coerce to keyword if embeddings not available (#10)
+    const effectiveMode: SearchMode =
+      (!this.embeddingsAvailable && (this.activeMode === 'semantic' || this.activeMode === 'hybrid'))
+        ? 'keyword'
+        : this.activeMode;
+
     try {
       results = await this.client.search({
         query,
-        mode: this.activeMode,
+        mode: effectiveMode,
         collection: this.collectionSelect.value || undefined,
         noRerank: this.settings.noRerank || undefined,
-        candidateLimit: this.settings.candidateLimit || undefined,
-        minScore: this.settings.minScore || undefined,
+        candidateLimit: this.settings.candidateLimit ?? undefined,
+        minScore: this.settings.minScore ?? undefined,
       });
       this.plugin.modelLoaded = true;
     } catch (err) {

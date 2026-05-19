@@ -12,8 +12,8 @@ import type QmdSearchPlugin from './main';
 import { type LogLevel, setLogLevel, log } from './util/log';
 import { buildEnv, resolveQmdBinary } from './util/env';
 import { loadCollectionNames } from './util/config';
-import { SearchModal } from './ui/SearchModal';
-import type { QmdStatus } from './client/types';
+import type { QmdStatus, IndexHealth } from './client/types';
+import { computeIndexHealth } from './client/types';
 
 export interface QmdSearchSettings {
   qmdBinaryPath: string;
@@ -23,8 +23,8 @@ export interface QmdSearchSettings {
   defaultCollection: string;
   defaultSearchMode: 'keyword' | 'semantic' | 'hybrid';
   noRerank: boolean;
-  candidateLimit: number;
-  minScore: number;
+  candidateLimit?: number;
+  minScore?: number;
   logLevel: LogLevel;
   recentQueries: string[];
   onboardingDone: boolean;
@@ -40,13 +40,13 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   defaultCollection: '',
   defaultSearchMode: 'hybrid',
   noRerank: false,
-  candidateLimit: 0,
-  minScore: 0,
+  candidateLimit: undefined,
+  minScore: undefined,
   logLevel: 'error',
   recentQueries: [],
   onboardingDone: false,
   autoReindex: false,
-  reindexDebounceSeconds: 30,
+  reindexDebounceSeconds: 3,
 };
 
 function runVersion(binary: string): Promise<string> {
@@ -147,22 +147,24 @@ export class QmdSettingTab extends PluginSettingTab {
     const header = containerEl.createDiv({ cls: 'qmd-settings-header' });
     header.createEl('h2', { text: 'QMD Search', cls: 'qmd-settings-title' });
     const headerMeta = header.createDiv({ cls: 'qmd-settings-meta' });
+    // Plain muted version text — no colored pill (#15)
     headerMeta.createEl('span', {
-      cls: 'qmd-version-pill',
+      cls: 'qmd-version-meta',
       text: `plugin v${this.plugin.manifest.version}`,
     });
 
-    // Header action buttons (will add Re-index and Search after status loads)
-    const headerActions = header.createDiv({ cls: 'qmd-settings-header-actions' });
-
-    // Binary status pill (async)
+    // Binary status pill (async) — shows qmd version, moves SHA to Advanced (#7)
     const binaryPill = headerMeta.createEl('span', { cls: 'qmd-binary-pill qmd-binary-pill--checking', text: 'checking…' });
     if (this.plugin.resolvedBinaryPath !== 'qmd') {
       runVersion(this.plugin.resolvedBinaryPath).then((v) => {
         if (!binaryPill.isConnected) return;
-        binaryPill.setText(`binary OK · ${v}`);
+        // Strip build hash from header; version only (#7)
+        const versionOnly = v.replace(/\s*\([0-9a-f]{6,}\)\s*$/, '').trim();
+        binaryPill.setText(`binary OK · ${versionOnly}`);
         binaryPill.removeClass('qmd-binary-pill--checking');
         binaryPill.addClass('qmd-binary-pill--ok');
+        // Store full version for Advanced > About
+        binaryPill.dataset.fullVersion = v;
       }).catch(() => {
         if (!binaryPill.isConnected) return;
         binaryPill.setText('binary error');
@@ -187,24 +189,10 @@ export class QmdSettingTab extends PluginSettingTab {
       if (status.collections.length === 0) {
         this.renderFirstRun(contentArea, wasAdvancedOpen);
       } else {
-        // Add Re-index and Search buttons to header
-        const reindexBtn = headerActions.createEl('button', { cls: 'qmd-header-btn', text: 'Re-index ↺' });
-        reindexBtn.addEventListener('click', async () => {
-          reindexBtn.disabled = true;
-          reindexBtn.textContent = 'Re-indexing…';
-          await this.plugin.reindex();
-          if (reindexBtn.isConnected) {
-            reindexBtn.disabled = false;
-            reindexBtn.textContent = 'Re-index ↺';
-          }
-          this.display();
-        });
-        const searchBtn = headerActions.createEl('button', { cls: 'qmd-header-btn mod-cta', text: 'Search… ⌘K' });
-        searchBtn.addEventListener('click', () => {
-          new SearchModal(this.app, this.plugin.client, this.plugin.settings, this.plugin).open();
-        });
-
-        this.renderHealthy(contentArea, status, wasAdvancedOpen);
+        const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
+        const totalVectors = status.totalVectors ?? 0;
+        const health = computeIndexHealth(totalDocs, totalVectors);
+        this.renderHealthy(contentArea, status, health, wasAdvancedOpen);
       }
     }).catch((err: Error) => {
       log.error('settings status failed:', err.message);
@@ -265,45 +253,67 @@ export class QmdSettingTab extends PluginSettingTab {
     this.renderAdvancedSection(container, wasAdvancedOpen);
   }
 
-  private renderHealthy(container: HTMLElement, status: QmdStatus, wasAdvancedOpen: boolean): void {
-    // Status card
-    const card = container.createDiv({ cls: 'qmd-health-card' });
-    const cardHeader = card.createDiv({ cls: 'qmd-health-card-header' });
-    const dot = cardHeader.createSpan({ cls: 'qmd-dot qmd-dot--ok' });
-    void dot;
-    cardHeader.createEl('strong', { text: 'Index healthy' });
-
-    const cardActions = card.createDiv({ cls: 'qmd-health-card-actions' });
-    const reindexCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
-    reindexCardBtn.setAttribute('title', 'Run qmd update — refreshes the text index after adding or editing notes. Fast.');
-    reindexCardBtn.addEventListener('click', () => { void this.plugin.reindex(); });
-    const embedCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '⟳ Embed' });
-    embedCardBtn.setAttribute('title', 'Run qmd embed — generates vector embeddings for semantic/hybrid search. Run after re-indexing.');
-    embedCardBtn.addEventListener('click', () => { void this.plugin.embed(); });
-
+  private renderHealthy(container: HTMLElement, status: QmdStatus, health: IndexHealth, wasAdvancedOpen: boolean): void {
     const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
     const totalVectors = status.totalVectors ?? 0;
     const lastIndexed = status.collections[0]?.lastIndexed;
 
-    if (lastIndexed) {
-      cardHeader.createEl('span', {
-        cls: 'qmd-health-meta',
-        text: `Last indexed ${lastIndexed}`,
+    const isPartial = health.kind === 'partial' || health.kind === 'stale';
+
+    // Status card
+    const card = container.createDiv({ cls: `qmd-health-card${isPartial ? ' qmd-health-card--warn' : ''}` });
+    const cardHeader = card.createDiv({ cls: 'qmd-health-card-header' });
+    const dot = cardHeader.createSpan({ cls: `qmd-dot ${isPartial ? 'qmd-dot--warn' : 'qmd-dot--ok'}` });
+    void dot;
+
+    if (isPartial) {
+      cardHeader.createEl('strong', { text: 'Index partial — embeddings missing' });
+      card.createEl('p', {
+        cls: 'qmd-health-warn-sub',
+        text: 'Hybrid & semantic modes will fall back to keyword until you run this.',
       });
+    } else {
+      cardHeader.createEl('strong', { text: 'Index healthy' });
+      if (lastIndexed) {
+        cardHeader.createEl('span', {
+          cls: 'qmd-health-meta',
+          text: `Last indexed ${lastIndexed}`,
+        });
+      }
+    }
+
+    // CTA: partial → "Generate embeddings"; healthy → "Re-index" (#5)
+    const cardActions = card.createDiv({ cls: 'qmd-health-card-actions' });
+    if (isPartial) {
+      const embedCta = cardActions.createEl('button', { cls: 'qmd-health-action-btn mod-cta', text: '✨ Generate embeddings' });
+      embedCta.addEventListener('click', () => { void this.plugin.embed(); this.display(); });
+      const reindexBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
+      reindexBtn.setAttribute('title', 'Refresh the text index (fast). Run before generating embeddings.');
+      reindexBtn.addEventListener('click', () => { void this.plugin.reindex(); });
+    } else {
+      const reindexCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
+      reindexCardBtn.setAttribute('title', 'Run qmd update — refreshes the text index after adding or editing notes. Fast.');
+      reindexCardBtn.addEventListener('click', () => { void this.plugin.reindex(); });
+      const embedCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '✨ Generate embeddings' });
+      embedCardBtn.setAttribute('title', 'Run qmd embed — generates vector embeddings for semantic/hybrid search.');
+      embedCardBtn.addEventListener('click', () => { void this.plugin.embed(); });
     }
 
     // Stats row
     const statsRow = card.createDiv({ cls: 'qmd-health-stats' });
-    const statItems: [string, string][] = [
+    const embeddingsStr = isPartial
+      ? `0 / ${totalDocs.toLocaleString()}`
+      : `${totalVectors.toLocaleString()} / ${totalDocs.toLocaleString()}`;
+    const statItems: Array<[string, string, boolean?]> = [
       ['Documents', totalDocs.toLocaleString()],
       ['Collections', String(status.collections.length)],
-      ['Embeddings', totalVectors.toLocaleString()],
+      ['Embeddings', embeddingsStr, isPartial],
     ];
     if (status.indexSize) statItems.push(['Disk', status.indexSize]);
-    for (const [label, value] of statItems) {
+    for (const [label, value, warn] of statItems) {
       const stat = statsRow.createDiv({ cls: 'qmd-health-stat' });
       stat.createEl('div', { cls: 'qmd-health-stat-label', text: label });
-      stat.createEl('div', { cls: 'qmd-health-stat-value', text: value });
+      stat.createEl('div', { cls: `qmd-health-stat-value${warn ? ' qmd-health-stat-value--warn' : ''}`, text: value });
     }
 
     // ── Collections section ────────────────────────────────────
@@ -361,8 +371,9 @@ export class QmdSettingTab extends PluginSettingTab {
             this.display();
           });
         });
+        menu.addSeparator();
         menu.addItem((item) => {
-          item.setTitle('Remove').onClick(async () => {
+          item.setTitle('Remove').setIcon('trash').onClick(async () => {
             new Notice(`QMD: removing collection "${col.name}"…`);
             try {
               await new Promise<void>((resolve, reject) => {
@@ -379,22 +390,28 @@ export class QmdSettingTab extends PluginSettingTab {
               new Notice(`QMD: remove failed — ${(err as Error).message}`);
             }
           });
+          // Apply destructive styling — `dom` exists at runtime but isn't in the public type
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item as any).dom?.addClass('qmd-menu-item--destructive');
         });
         menu.showAtMouseEvent(e);
       });
     }
 
-    this.renderGeneralSettings(container, status.collections.map((c) => c.name));
+    this.renderGeneralSettings(container, status.collections.map((c) => c.name), health);
     this.renderAdvancedSection(container, wasAdvancedOpen);
   }
 
-  private renderGeneralSettings(container: HTMLElement, liveCollectionNames?: string[]): void {
+  private renderGeneralSettings(container: HTMLElement, liveCollectionNames?: string[], health?: IndexHealth): void {
     const section = container.createDiv({ cls: 'qmd-settings-section' });
     section.createEl('div', { cls: 'qmd-section-title', text: 'General' });
 
-    // Default search mode
+    const isPartial = health?.kind === 'partial' || health?.kind === 'stale';
+
+    // Default search mode — warn if partial and hybrid/semantic selected
     new Setting(section)
       .setName('Default search mode')
+      .setDesc(isPartial ? 'Hybrid and Semantic require embeddings. Currently coerced to Keyword.' : '')
       .addDropdown((dd) => {
         dd.addOption('keyword', 'Keyword')
           .addOption('semantic', 'Semantic')
@@ -439,91 +456,87 @@ export class QmdSettingTab extends PluginSettingTab {
           }),
       );
 
+    const formatDelay = (s: number) => s < 60 ? `${s}s` : `${Math.round(s / 60)}m`;
     const debounceValueEl = section.createEl('span', {
-      text: `${this.plugin.settings.reindexDebounceSeconds}s`,
+      text: formatDelay(this.plugin.settings.reindexDebounceSeconds),
       cls: 'qmd-slider-value',
     });
     new Setting(section)
       .setName('Reindex delay')
-      .setDesc('Seconds to wait after the last file change before triggering a reindex.')
+      .setDesc('Time to wait after the last file change before triggering a reindex. Range: 1s … 5m')
       .setClass('qmd-setting-with-value')
-      .addSlider((slider) =>
+      .addSlider((slider) => {
         slider
-          .setLimits(5, 120, 5)
+          .setLimits(1, 300, 1)
           .setValue(this.plugin.settings.reindexDebounceSeconds)
           .onChange(async (value) => {
-            debounceValueEl.setText(`${value}s`);
+            debounceValueEl.setText(formatDelay(value));
             this.plugin.settings.reindexDebounceSeconds = value;
             await this.plugin.saveSettings(false);
-          }),
-      )
+          });
+        slider.sliderEl.title = '1s … 5m';
+      })
       .settingEl.append(debounceValueEl);
 
-    // qmd binary path
-    const versionEl = section.createEl('p', { cls: 'qmd-version-hint' });
-    if (this.plugin.resolvedBinaryPath !== 'qmd' && this.plugin.settings.qmdBinaryPath === 'qmd') {
-      versionEl.setText(`resolved → ${this.plugin.resolvedBinaryPath}`);
-      versionEl.addClass('qmd-version-ok');
-    }
-    let binaryInputEl: HTMLInputElement;
-    new Setting(section)
-      .setName('qmd binary path')
-      .setDesc('Path to the qmd executable. Leave as "qmd" to auto-detect.')
-      .addText((text) => {
-        binaryInputEl = text.inputEl;
-        text
-          .setPlaceholder('qmd')
-          .setValue(this.plugin.settings.qmdBinaryPath)
-          .onChange((value) => { this.plugin.settings.qmdBinaryPath = value; });
-        text.inputEl.addEventListener('blur', async () => {
-          await this.plugin.saveSettings();
-          try {
-            const version = await runVersion(this.plugin.resolvedBinaryPath);
-            if (!versionEl.isConnected) return;
-            versionEl.setText(`✓ ${version}`);
-            versionEl.removeClass('qmd-version-error');
-            versionEl.addClass('qmd-version-ok');
-          } catch {
-            if (!versionEl.isConnected) return;
-            versionEl.setText('✗ qmd not found or failed');
-            versionEl.removeClass('qmd-version-ok');
-            versionEl.addClass('qmd-version-error');
-          }
-        });
-      })
-      .addButton((btn) => {
-        btn.setButtonText('Auto-detect').onClick(async () => {
-          btn.setDisabled(true);
-          btn.setButtonText('Detecting…');
-          try {
-            const resolved = await resolveQmdBinary('qmd');
-            if (!versionEl.isConnected) return;
-            if (resolved !== 'qmd') {
-              binaryInputEl.value = resolved;
-              this.plugin.settings.qmdBinaryPath = resolved;
-              await this.plugin.saveSettings();
-              try {
-                const version = await runVersion(resolved);
-                versionEl.setText(`✓ ${version}`);
-                versionEl.removeClass('qmd-version-error');
-                versionEl.addClass('qmd-version-ok');
-              } catch {
-                versionEl.setText(`Found at ${resolved} but --version failed`);
-                versionEl.addClass('qmd-version-ok');
-              }
-            } else {
-              versionEl.setText('✗ Could not find qmd — set path manually');
-              versionEl.removeClass('qmd-version-ok');
-              versionEl.addClass('qmd-version-error');
-            }
-          } finally {
-            if (btn.buttonEl.isConnected) {
-              btn.setDisabled(false);
-              btn.setButtonText('Auto-detect');
-            }
-          }
-        });
+    // qmd binary path — read-only chip with Change… button (#6)
+    const autoDetected = this.plugin.resolvedBinaryPath !== 'qmd' && this.plugin.settings.qmdBinaryPath === 'qmd';
+    const displayPath = autoDetected ? this.plugin.resolvedBinaryPath : this.plugin.settings.qmdBinaryPath;
+
+    const binarySetting = new Setting(section)
+      .setName('qmd binary')
+      .setDesc('Path to the qmd executable. Auto-detected from $PATH.');
+
+    // Read-only chip showing resolved path
+    const chipContainer = binarySetting.settingEl.createDiv({ cls: 'qmd-binary-chip-row' });
+    const chip = chipContainer.createEl('span', {
+      cls: `qmd-binary-chip${autoDetected ? ' qmd-binary-chip--auto' : ''}`,
+      text: (autoDetected ? '✓ ' : '') + displayPath,
+    });
+
+    const changeBtn = chipContainer.createEl('button', { cls: 'qmd-binary-change-btn', text: 'Change…' });
+    let editEl: HTMLInputElement | null = null;
+
+    changeBtn.addEventListener('click', () => {
+      if (editEl) return;
+      chip.style.display = 'none';
+      changeBtn.style.display = 'none';
+
+      const editRow = chipContainer.createDiv({ cls: 'qmd-binary-edit-row' });
+      editEl = editRow.createEl('input', {
+        type: 'text',
+        value: this.plugin.settings.qmdBinaryPath,
+        placeholder: 'qmd',
+        cls: 'qmd-binary-edit-input',
       });
+      const saveBtn = editRow.createEl('button', { cls: 'mod-cta qmd-binary-save-btn', text: 'Save' });
+      const cancelBtn = editRow.createEl('button', { cls: 'qmd-binary-cancel-btn', text: 'Cancel' });
+
+      const cancel = () => {
+        editRow.remove();
+        editEl = null;
+        chip.style.display = '';
+        changeBtn.style.display = '';
+      };
+
+      const save = async () => {
+        const val = editEl?.value.trim() ?? '';
+        this.plugin.settings.qmdBinaryPath = val || 'qmd';
+        await this.plugin.saveSettings();
+        cancel();
+        this.display();
+      };
+
+      saveBtn.addEventListener('click', () => void save());
+      cancelBtn.addEventListener('click', cancel);
+      editEl.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter') void save();
+        else if (e.key === 'Escape') cancel();
+      });
+      setTimeout(() => editEl?.focus(), 50);
+    });
+
+    // Insert chip row into the setting control area
+    binarySetting.settingEl.querySelector('.setting-item-control')?.append(chipContainer);
   }
 
   private renderAdvancedSection(container: HTMLElement, wasOpen: boolean): void {
@@ -578,7 +591,7 @@ export class QmdSettingTab extends PluginSettingTab {
 
     new Setting(advancedEl)
       .setName('Skip LLM reranking')
-      .setDesc('Pass --no-rerank to qmd. Faster responses; BM25+vector fusion only.')
+      .setDesc('Faster responses; BM25+vector fusion only. Equivalent to --no-rerank.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.noRerank)
@@ -590,28 +603,32 @@ export class QmdSettingTab extends PluginSettingTab {
 
     new Setting(advancedEl)
       .setName('Reranker candidate limit')
-      .setDesc('Max candidates passed to the LLM reranker (-C flag). 0 = qmd default (~40).')
+      .setDesc('Max candidates sent to the LLM reranker. Leave blank for the qmd default (~40).')
       .addText((text) =>
         text
-          .setPlaceholder('0')
-          .setValue(this.plugin.settings.candidateLimit > 0 ? String(this.plugin.settings.candidateLimit) : '')
+          .setPlaceholder('Default (~40)')
+          .setValue(this.plugin.settings.candidateLimit != null && this.plugin.settings.candidateLimit > 0
+            ? String(this.plugin.settings.candidateLimit)
+            : '')
           .onChange(async (value) => {
             const n = parseInt(value, 10);
-            this.plugin.settings.candidateLimit = isNaN(n) || n < 0 ? 0 : n;
+            this.plugin.settings.candidateLimit = isNaN(n) || n <= 0 ? undefined : n;
             await this.plugin.saveSettings(false);
           }),
       );
 
     new Setting(advancedEl)
       .setName('Minimum score')
-      .setDesc('Filter results below this similarity score (--min-score). 0 = disabled.')
+      .setDesc('Filter results below this similarity score. Leave blank to disable.')
       .addText((text) =>
         text
-          .setPlaceholder('0')
-          .setValue(this.plugin.settings.minScore > 0 ? String(this.plugin.settings.minScore) : '')
+          .setPlaceholder('Default (disabled)')
+          .setValue(this.plugin.settings.minScore != null && this.plugin.settings.minScore > 0
+            ? String(this.plugin.settings.minScore)
+            : '')
           .onChange(async (value) => {
             const n = parseFloat(value);
-            this.plugin.settings.minScore = isNaN(n) || n < 0 ? 0 : n;
+            this.plugin.settings.minScore = isNaN(n) || n <= 0 ? undefined : n;
             await this.plugin.saveSettings(false);
           }),
       );
@@ -651,5 +668,19 @@ export class QmdSettingTab extends PluginSettingTab {
           if (err) new Notice(`QMD: failed to open folder — ${err}`);
         });
       });
+
+    // About — shows full version with build hash (#7)
+    const aboutEl = advancedEl.createDiv({ cls: 'qmd-about-section' });
+    aboutEl.createEl('p', { cls: 'qmd-about-label', text: 'About' });
+    aboutEl.createEl('p', {
+      cls: 'qmd-about-line',
+      text: `plugin v${this.plugin.manifest.version}`,
+    });
+    if (this.plugin.resolvedBinaryPath !== 'qmd') {
+      runVersion(this.plugin.resolvedBinaryPath).then((v) => {
+        if (!aboutEl.isConnected) return;
+        aboutEl.createEl('p', { cls: 'qmd-about-line', text: `qmd ${v}` });
+      }).catch(() => { /* ignore */ });
+    }
   }
 }

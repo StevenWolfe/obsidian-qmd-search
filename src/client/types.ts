@@ -67,10 +67,30 @@ export interface QmdStatus {
   cpuCores?: string;
 }
 
+/** Two-tier health discriminator for the index. */
+export type IndexHealth =
+  | { kind: 'empty' }
+  | { kind: 'partial';  docs: number; embeddings: 0 }
+  | { kind: 'building'; phase: 'index' | 'embed'; done: number; total: number }
+  | { kind: 'healthy';  docs: number; embeddings: number }
+  | { kind: 'stale';    docs: number; embeddings: number }
+  | { kind: 'error';    detail: string };
+
+/** Compute IndexHealth from raw doc / vector counts. */
+export function computeIndexHealth(
+  docs: number,
+  embeddings: number,
+): IndexHealth {
+  if (docs === 0) return { kind: 'empty' };
+  if (embeddings === 0) return { kind: 'partial', docs, embeddings: 0 };
+  if (embeddings < docs) return { kind: 'stale', docs, embeddings };
+  return { kind: 'healthy', docs, embeddings };
+}
+
 export type PluginStatus =
   | { kind: 'unresolved' }
   | { kind: 'empty' }
-  | { kind: 'idle'; docs: number; collections: number; embeddings: number; lastIndexed?: string }
+  | { kind: 'idle'; docs: number; collections: number; embeddings: number; lastIndexed?: string; health: IndexHealth }
   | { kind: 'indexing'; done: number; total: number }
   | { kind: 'error'; detail: string; code: 'binary_missing' | 'index_corrupt' | 'qmd_crash' }
   | { kind: 'transient'; results: number; ms: number };
