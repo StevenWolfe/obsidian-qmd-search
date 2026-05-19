@@ -1003,3 +1003,11 @@
 
 .qmd-version-ok    { color: var(--text-success); }
 .qmd-version-error { color: var(--text-error); }
+
+.qmd-setting-with-value .setting-item-control { gap: 8px; }
+.qmd-slider-value {
+  font-size: 0.85em;
+  min-width: 2.5em;
+  text-align: right;
+  color: var(--text-muted);
+}

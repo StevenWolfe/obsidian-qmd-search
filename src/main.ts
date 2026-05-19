@@ -16,7 +16,6 @@ import type { PluginStatus } from './client/types';
 const STATUS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const TRANSIENT_DURATION_MS = 3000;
 const MAX_RECENT_QUERIES = 5;
-const AUTO_REINDEX_DEBOUNCE_MS = 30_000;
 
 export default class QmdSearchPlugin extends Plugin {
   settings!: QmdSearchSettings;
@@ -111,7 +110,7 @@ export default class QmdSearchPlugin extends Plugin {
     this.reindexTimer = window.setTimeout(() => {
       this.reindexTimer = null;
       void this.reindex();
-    }, AUTO_REINDEX_DEBOUNCE_MS);
+    }, this.settings.reindexDebounceSeconds * 1000);
   }
 
   async loadSettings(): Promise<void> {

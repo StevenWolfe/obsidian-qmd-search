@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 480" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">
+  <rect x="1" y="1" width="878" height="478" rx="10" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"></rect>
+
+  <text x="32" y="40" fill="#18181b" font-size="16" font-weight="600">Status bar — five states</text>
+  <text x="32" y="62" fill="#52525b" font-size="12">Pattern: ⟨dot⟩ qmd ⟨unit⟩. Dot color communicates state, text communicates the most useful number.</text>
+
+  <text x="32" y="100" fill="#a1a1aa" font-size="11" font-weight="600" letter-spacing="0.06em">STATE</text>
+  <text x="220" y="100" fill="#a1a1aa" font-size="11" font-weight="600" letter-spacing="0.06em">RENDERING</text>
+  <text x="600" y="100" fill="#a1a1aa" font-size="11" font-weight="600" letter-spacing="0.06em">CLICK BEHAVIOR</text>
+  <line x1="32" y1="108" x2="848" y2="108" stroke="#e4e4e7" stroke-width="1"></line>
+
+  
+  <text x="32" y="148" fill="#52525b" font-size="12" font-weight="500">Idle / healthy</text>
+  <g transform="translate(220, 130)">
+    <rect x="0" y="0" width="220" height="26" rx="5" fill="#18181b" stroke="#27272a"></rect>
+    <circle cx="16" cy="13" r="7" fill="#22c55e" opacity="0.18"></circle>
+    <circle cx="16" cy="13" r="4" fill="#22c55e"></circle>
+    <text x="30" y="17" fill="#e4e4e7" font-size="11.5">qmd</text>
+    <text x="58" y="17" fill="#a1a1aa" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">1,248</text>
+  </g>
+  <text x="600" y="148" fill="#71717a" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">opens status popover</text>
+
+  
+  <text x="32" y="218" fill="#52525b" font-size="12" font-weight="500">Empty / needs indexing</text>
+  <g transform="translate(220, 200)">
+    <rect x="0" y="0" width="220" height="26" rx="5" fill="#18181b" stroke="#27272a"></rect>
+    <circle cx="16" cy="13" r="7" fill="#f59e0b" opacity="0.18"></circle>
+    <circle cx="16" cy="13" r="4" fill="#f59e0b"></circle>
+    <text x="30" y="17" fill="#e4e4e7" font-size="11.5">qmd</text>
+    <text x="58" y="17" fill="#a1a1aa" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">no index</text>
+  </g>
+  <text x="600" y="218" fill="#71717a" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">opens onboarding</text>
+
+  
+  <text x="32" y="288" fill="#52525b" font-size="12" font-weight="500">Indexing</text>
+  <g transform="translate(220, 270)">
+    <rect x="0" y="0" width="220" height="26" rx="5" fill="#18181b" stroke="#27272a"></rect>
+    <circle cx="16" cy="13" r="9" fill="#a78bfa" opacity="0.22"></circle>
+    <circle cx="16" cy="13" r="4" fill="#a78bfa"></circle>
+    <text x="30" y="17" fill="#e4e4e7" font-size="11.5">qmd</text>
+    <text x="58" y="17" fill="#a1a1aa" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">indexing 412 / 1,248</text>
+  </g>
+  <text x="600" y="288" fill="#71717a" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">popover w/ Cancel</text>
+
+  
+  <text x="32" y="358" fill="#52525b" font-size="12" font-weight="500">Error</text>
+  <g transform="translate(220, 340)">
+    <rect x="0" y="0" width="220" height="26" rx="5" fill="#18181b" stroke="#27272a"></rect>
+    <circle cx="16" cy="13" r="7" fill="#ef4444" opacity="0.22"></circle>
+    <circle cx="16" cy="13" r="4" fill="#ef4444"></circle>
+    <text x="30" y="17" fill="#e4e4e7" font-size="11.5">qmd</text>
+    <text x="58" y="17" fill="#a1a1aa" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">binary not found</text>
+  </g>
+  <text x="600" y="358" fill="#71717a" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">jumps to failing setting</text>
+
+  
+  <text x="32" y="428" fill="#52525b" font-size="12" font-weight="500">After search (3s)</text>
+  <g transform="translate(220, 410)">
+    <rect x="0" y="0" width="220" height="26" rx="5" fill="#18181b" stroke="#27272a"></rect>
+    <circle cx="16" cy="13" r="7" fill="#22c55e" opacity="0.18"></circle>
+    <circle cx="16" cy="13" r="4" fill="#22c55e"></circle>
+    <text x="30" y="17" fill="#e4e4e7" font-size="11.5">qmd</text>
+    <text x="58" y="17" fill="#a1a1aa" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">12 results · 84 ms</text>
+  </g>
+  <text x="600" y="428" fill="#71717a" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace">re-opens last query</text>
+</svg>
