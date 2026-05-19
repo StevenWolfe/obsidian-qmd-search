@@ -225,7 +225,7 @@ export default class QmdSearchPlugin extends Plugin {
         new SearchModal(this.app, this.client, this.settings, this).open();
         break;
       default:
-        this.refreshStatusBar();
+        void this.refreshStatusBar();
     }
   }
 
@@ -297,7 +297,7 @@ export default class QmdSearchPlugin extends Plugin {
         notice.hide();
         if (err) new Notice(`QMD: re-index error — ${err.message}`);
         else new Notice('QMD: re-index complete ✓');
-        this.refreshStatusBar();
+        void this.refreshStatusBar();
         resolve();
       });
     });
@@ -312,7 +312,7 @@ export default class QmdSearchPlugin extends Plugin {
         notice.hide();
         if (err) new Notice(`QMD: embed error — ${err.message}`);
         else new Notice('QMD: embeddings complete ✓');
-        this.refreshStatusBar();
+        void this.refreshStatusBar();
         resolve();
       });
     });

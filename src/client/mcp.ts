@@ -148,10 +148,10 @@ export class McpQmdClient implements QmdClient {
                 resolve(JSON.parse(textPart.text));
               } catch (parseErr) {
                 log.error('MCP result JSON parse failed, raw text:', textPart.text);
-                reject(parseErr);
+                reject(parseErr instanceof Error ? parseErr : new Error(String(parseErr)));
               }
             } catch (err) {
-              reject(err);
+              reject(err instanceof Error ? err : new Error(String(err)));
             }
           });
         },

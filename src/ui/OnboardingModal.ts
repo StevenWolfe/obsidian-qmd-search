@@ -68,7 +68,7 @@ export class OnboardingModal extends Modal {
       try {
         binaryVersion = await new Promise<string>((resolve, reject) => {
           execFile(this.plugin.resolvedBinaryPath, ['--version'], { timeout: 5000, env: buildEnv() }, (err, stdout) => {
-            if (err) reject(err);
+            if (err) reject(new Error(err.message));
             else resolve(stdout.trim());
           });
         });
@@ -172,7 +172,7 @@ export class OnboardingModal extends Modal {
                   this.plugin.resolvedBinaryPath,
                   ['collection', 'add', vaultPath, '--name', vaultName],
                   { timeout: 30_000, env: buildEnv() },
-                  (err) => (err ? reject(err) : resolve()),
+                  (err) => (err ? reject(new Error(err.message)) : resolve()),
                 );
               });
               new Notice(`QMD: vault registered as "${vaultName}" ✓`);
