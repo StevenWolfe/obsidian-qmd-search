@@ -1,0 +1,223 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="Docs · QMD Search for Obsidian"
+  description="Install, configure and use the QMD Search plugin for Obsidian."
+  activePage="docs"
+>
+<!-- ───────────── Docs body ───────────── -->
+<div class="wrap docs">
+
+  <!-- Sidebar TOC -->
+  <aside>
+    <div class="grp">Install</div>
+    <ol>
+      <li><a href="#install-qmd">Install the qmd CLI</a></li>
+      <li><a href="#install-brat">Add BRAT to Obsidian</a></li>
+      <li><a href="#install-plugin">Add this plugin via BRAT</a></li>
+      <li><a href="#install-enable">Enable and point to qmd</a></li>
+      <li><a href="#install-index">Build your first index</a></li>
+    </ol>
+    <div class="grp">Use</div>
+    <ul>
+      <li><a href="#use-search">Run a search</a></li>
+      <li><a href="#use-modes">Choose a mode</a></li>
+      <li><a href="#use-keys">Keyboard reference</a></li>
+    </ul>
+    <div class="grp">Reference</div>
+    <ul>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#troubleshoot">Troubleshooting</a></li>
+      <li><a href="#feedback">Feedback &amp; issues</a></li>
+    </ul>
+  </aside>
+
+  <!-- Main content -->
+  <main>
+    <div class="eyebrow">Documentation · v0.12.0</div>
+    <h1>Get QMD Search running on your vault.</h1>
+    <p class="lead">
+      This is the pre-release install path. It takes about five minutes if you already have a working terminal — three steps to install, one to configure, one to index.
+    </p>
+
+    <div class="note warn">
+      <div>
+        <strong>This is a pre-release.</strong> The plugin isn't yet in Obsidian's community plugins directory. We install it via <a href="https://github.com/TfTHacker/obsidian42-brat" target="_blank" rel="noopener">BRAT</a> — the beta-reviewer plugin Obsidian users commonly use to test in-development plugins. Expect rough edges; please <a href="#feedback">file what you find</a>.
+      </div>
+    </div>
+
+    <!-- ───────── Install ───────── -->
+    <section id="install">
+      <h2>
+        <span class="step">Install</span>
+        Get the plugin into Obsidian
+        <a class="anchor" href="#install">#</a>
+      </h2>
+      <p>You need two things on your machine: the <code>qmd</code> command-line binary (the search engine itself) and the Obsidian plugin (this project), which acts as a bridge between Obsidian and qmd.</p>
+
+      <ol class="steps">
+        <li id="install-qmd">
+          <div>
+            <div class="step-title">Install the <code>qmd</code> CLI</div>
+            <p>The plugin shells out to <code>qmd</code> for indexing and querying — it doesn't bundle the engine. Install it via npm:</p>
+<pre><span class="c"># Install via npm (requires Node.js 18+)</span>
+npm install -g @tobilu/qmd
+
+<span class="c"># Verify</span>
+qmd --version</pre>
+            <p>If <code>qmd --version</code> works in your terminal, you're set.</p>
+          </div>
+        </li>
+
+        <li id="install-brat">
+          <div>
+            <div class="step-title">Install BRAT in Obsidian</div>
+            <p>In Obsidian, open <strong>Settings → Community plugins → Browse</strong>, search for <em>BRAT</em>, install it, and enable it.</p>
+            <p>If you've used pre-release plugins before, you can skip this — BRAT is probably already installed.</p>
+          </div>
+        </li>
+
+        <li id="install-plugin">
+          <div>
+            <div class="step-title">Add this plugin via BRAT</div>
+            <p>Open the command palette (<span class="kbd">⌘P</span> / <span class="kbd">Ctrl P</span>) and run <strong>BRAT: Add a beta plugin for testing</strong>. Paste the repository URL:</p>
+<pre><span class="v">https://github.com/StevenWolfe/obsidian-qmd-search</span></pre>
+            <p>Choose <strong>Latest version</strong> when prompted. BRAT will clone the latest release into your vault's <code>.obsidian/plugins/</code> folder.</p>
+          </div>
+        </li>
+
+        <li id="install-enable">
+          <div>
+            <div class="step-title">Enable the plugin and confirm qmd is found</div>
+            <p>Back in <strong>Settings → Community plugins</strong>, toggle <em>QMD Search</em> on. Then open its settings tab.</p>
+            <p>At the top of the panel, you should see a green <strong>binary OK</strong> pill and the resolved path to your <code>qmd</code> executable. If it's red instead, click <em>Change…</em> and point it at the binary explicitly — usually <code>~/.npm-global/bin/qmd</code> or the output of <code>which qmd</code> in your terminal.</p>
+          </div>
+        </li>
+
+        <li id="install-index">
+          <div>
+            <div class="step-title">Build your first index</div>
+            <p>In the plugin's settings panel, find the <strong>Index status</strong> card. On a fresh install it will show <em>empty</em>. Click <strong>Re-index</strong> to build the lexical index, then click <strong>Generate embeddings</strong> if you want semantic and hybrid search (recommended).</p>
+            <div class="note">
+              <div>
+                <strong>Tip ·</strong> Building embeddings is the slow step — roughly a minute per thousand notes on a modern laptop. You can keep using Obsidian while it runs; the status bar shows live progress.
+              </div>
+            </div>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ───────── Use ───────── -->
+    <section id="use">
+      <h2>
+        <span class="step">Use</span>
+        Search your vault
+        <a class="anchor" href="#use">#</a>
+      </h2>
+
+      <h3 id="use-search">Run a search</h3>
+      <p>Press <span class="kbd">⌘K</span> (macOS) or <span class="kbd">Ctrl K</span> (Windows / Linux) to open the QMD search modal. If that shortcut conflicts with another plugin, change it under <strong>Settings → Hotkeys → QMD: Open search</strong>.</p>
+      <p>You can also run it from the command palette: <strong>QMD Search: Open</strong>.</p>
+
+      <h3 id="use-modes">Choose a mode</h3>
+      <p>The toolbar inside the modal has three modes:</p>
+      <ul class="bul">
+        <li><strong>Keyword</strong> — pure BM25. Fast, exact, good for searching code blocks and proper nouns.</li>
+        <li><strong>Semantic</strong> — vector similarity over your embeddings. Good for fuzzy questions and "I remember writing something like…"</li>
+        <li><strong>Hybrid</strong> — runs both and reranks. Your default for most queries.</li>
+      </ul>
+      <p>If embeddings haven't been generated yet, <em>Semantic</em> and <em>Hybrid</em> are disabled with a tooltip telling you what to do — head back to settings and run <strong>Generate embeddings</strong>.</p>
+
+      <h3 id="use-keys">Keyboard reference</h3>
+      <div class="keys">
+        <div class="k"><span class="kbd">⌘K</span><span>Open search</span></div>
+        <div class="k"><span class="kbd">↑</span><span class="kbd">↓</span><span>Move selection</span></div>
+        <div class="k"><span class="kbd">↵</span><span>Open in current pane</span></div>
+        <div class="k"><span class="kbd">⌘↵</span><span>Open in new tab</span></div>
+        <div class="k"><span class="kbd">⌘⇧↵</span><span>Open in split pane</span></div>
+        <div class="k"><span class="kbd">esc</span><span>Close modal</span></div>
+      </div>
+    </section>
+
+    <!-- ───────── Settings reference ───────── -->
+    <section id="settings">
+      <h2>
+        Settings reference
+        <a class="anchor" href="#settings">#</a>
+      </h2>
+      <p>A short cheat-sheet of the settings you'll actually touch. Everything else has sensible defaults.</p>
+
+      <table class="tbl">
+        <thead>
+          <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="k">qmd binary</td>
+            <td class="k">auto</td>
+            <td class="d">Resolved from <code>$PATH</code>. Override only if you have multiple installs.</td>
+          </tr>
+          <tr>
+            <td class="k">Default mode</td>
+            <td class="k">Hybrid</td>
+            <td class="d">Falls back to <em>Keyword</em> when embeddings aren't available.</td>
+          </tr>
+          <tr>
+            <td class="k">Reindex delay</td>
+            <td class="k">90 s</td>
+            <td class="d">Debounce window after a file change before re-indexing. Lower it for more frequent updates; raise it on slower machines.</td>
+          </tr>
+          <tr>
+            <td class="k">Collections</td>
+            <td class="k">one (vault root)</td>
+            <td class="d">Optional — split your vault into named scopes (e.g. <em>journal</em>, <em>work</em>) and search within one.</td>
+          </tr>
+          <tr>
+            <td class="k">Reranker</td>
+            <td class="k">qmd default</td>
+            <td class="d">Leave blank to use qmd's defaults; advanced users can tune candidate count and minimum score.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ───────── Troubleshooting ───────── -->
+    <section id="troubleshoot">
+      <h2>
+        Troubleshooting
+        <a class="anchor" href="#troubleshoot">#</a>
+      </h2>
+
+      <h3>"Binary missing" in the status bar</h3>
+      <p>The plugin can't find <code>qmd</code> on your <code>$PATH</code>. Click the chip — it jumps you straight to the binary setting. Paste the absolute path returned by <code>which qmd</code> in your terminal.</p>
+
+      <h3>"Index partial — embeddings missing"</h3>
+      <p>The lexical index is built but embeddings aren't. Hybrid and Semantic modes will silently fall back to Keyword. Open settings and click <strong>Generate embeddings</strong> to fix it.</p>
+
+      <h3>Search is slow on a big vault</h3>
+      <p>The first search after a long idle period rebuilds the in-memory index; subsequent queries are sub-100ms. If queries stay slow, raise <em>Reindex delay</em> so background reindex runs don't compete with your search.</p>
+
+      <h3>Results don't include a new note</h3>
+      <p>By default the index waits 90 seconds after the last save before reindexing. If you just created a note and the modal doesn't see it, wait a moment, or click <strong>Re-index</strong> in the status card to force an immediate pass.</p>
+    </section>
+
+    <!-- ───────── Feedback ───────── -->
+    <section id="feedback">
+      <h2>
+        Feedback &amp; issues
+        <a class="anchor" href="#feedback">#</a>
+      </h2>
+      <p>This is a pre-release. Bug reports, design feedback and feature requests are all welcome — please file them on GitHub:</p>
+      <p style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn primary" href="https://github.com/StevenWolfe/obsidian-qmd-search/issues" target="_blank" rel="noopener">Open an issue<span class="arrow">→</span></a>
+        <a class="btn ghost" href="https://github.com/StevenWolfe/obsidian-qmd-search" target="_blank" rel="noopener">View source</a>
+      </p>
+    </section>
+
+  </main>
+</div>
+
+<!-- ───────────── Footer ───────────── -->
+</Base>

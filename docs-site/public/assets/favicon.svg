@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="qmd search">
+  <rect width="64" height="64" rx="14" fill="#1c1c1f"></rect>
+  <g fill="none" stroke="#faf9f6" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="27" cy="27" r="13"></circle>
+    <path d="m44 44-8-8"></path>
+  </g>
+  <circle cx="27" cy="27" r="3.2" fill="#a78bfa"></circle>
+</svg>

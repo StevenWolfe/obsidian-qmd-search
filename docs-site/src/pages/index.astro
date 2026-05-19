@@ -1,0 +1,174 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="QMD Search for Obsidian"
+  description="A community Obsidian plugin that adds keyword, semantic and hybrid search to your vault — powered by the qmd search engine, running locally."
+  activePage="overview"
+>
+<!-- ───────────── Hero ───────────── -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Obsidian community plugin · BM25 · vectors · rerank</div>
+      <h1>Search your vault like <em>you mean it.</em></h1>
+      <p class="lead">
+        QMD Search adds <strong>hybrid search</strong> to Obsidian — keyword, semantic, and a reranked blend of both — by wiring the local <code>qmd</code> engine into your vault. No cloud, no API key, no opening the file tree to guess where that note went.
+      </p>
+      <div class="ctas">
+        <a class="btn primary" href={`${import.meta.env.BASE_URL}/docs#install`}>
+          Install with BRAT
+          <span class="arrow">→</span>
+        </a>
+        <a class="btn ghost" href="https://github.com/StevenWolfe/obsidian-qmd-search" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.1.79-.25.79-.55v-2c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.3-.51-1.47.11-3.06 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.24 2.76.12 3.06.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.4-5.27 5.69.41.36.78 1.05.78 2.13v3.16c0 .31.2.66.8.55A11.5 11.5 0 0 0 12 .5z"/></svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="hero-meta">
+        <span><span class="dot"></span>100% local</span>
+        <span>MIT license</span>
+        <span>Tested on Obsidian 1.5+</span>
+      </div>
+    </div>
+
+    <!-- Search-modal mock (abstract, not copying any product chrome) -->
+    <div class="mock" aria-hidden="true">
+      <div class="mock-titlebar">
+        <span class="tl"></span><span class="tl"></span><span class="tl"></span>
+      </div>
+      <div class="mock-body">
+        <div class="mock-search">
+          <span class="glyph">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+          </span>
+          <span class="typed">decisions in journal/</span><span class="caret"></span>
+          <span class="esc">esc</span>
+        </div>
+        <div class="mock-toolbar">
+          <div class="mock-seg">
+            <span>Keyword</span>
+            <span>Semantic</span>
+            <span class="on">Hybrid</span>
+          </div>
+          <span class="stat">3 results · 42 ms</span>
+        </div>
+        <div class="mock-result focus">
+          <div>
+            <div class="title">Switching laptops · 2026-02-04</div>
+            <div class="path">journal/2026/02-04.md</div>
+            <div class="snip">"…decided to stop fighting the keyboard and <mark>migrate</mark> to the framework laptop next month. Reasoning: repairability, Linux-first…"</div>
+          </div>
+          <div class="score">0.91</div>
+        </div>
+        <div class="mock-result">
+          <div>
+            <div class="title">Notes app — final pick</div>
+            <div class="path">journal/2025/11-22.md</div>
+            <div class="snip">"After two weeks of trialing four <mark>notes</mark> apps, picking Obsidian. The plugin ecosystem won."</div>
+          </div>
+          <div class="score">0.78</div>
+        </div>
+        <div class="mock-result">
+          <div>
+            <div class="title">Homelab rearchitecture</div>
+            <div class="path">journal/2025/09-01.md</div>
+            <div class="snip">"Pulled the trigger on consolidating to one mini-PC. <mark>Decision</mark> matrix attached…"</div>
+          </div>
+          <div class="score">0.74</div>
+        </div>
+        <div class="mock-footer">
+          <span><kbd>↑↓</kbd>navigate</span>
+          <span><kbd>↵</kbd>open</span>
+          <span><kbd>⌘↵</kbd>new tab</span>
+          <span class="right">hybrid · BM25 + vectors + rerank</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── Features ───────────── -->
+<section class="features">
+  <div class="wrap">
+    <div class="features-head">
+      <div class="eyebrow">What you get</div>
+      <h2>Three search modes. One keystroke. Zero network.</h2>
+      <p>Obsidian's built-in search is great for filenames and exact strings. QMD adds the part that's been missing: ranked retrieval over the words and the meanings.</p>
+    </div>
+
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="num">01 · Keyword</div>
+        <h3>BM25, the way grown-ups do search</h3>
+        <p>Statistical keyword ranking that actually understands which terms in your query matter most — not just "does this string appear."</p>
+      </div>
+      <div class="feat">
+        <div class="num">02 · Semantic</div>
+        <h3>Find notes by meaning</h3>
+        <p>Local embeddings let you search for ideas, not spellings. Ask for "the time I switched laptops" and find the entry titled "framework arrived."</p>
+      </div>
+      <div class="feat">
+        <div class="num">03 · Hybrid</div>
+        <h3>Both, then reranked</h3>
+        <p>Hybrid mode runs lexical and vector retrieval in parallel and reranks the union — the best of both, with the failure modes of neither.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── How it works ───────────── -->
+<section class="layers">
+  <div class="wrap layers-grid">
+    <div>
+      <div class="eyebrow">Under the hood</div>
+      <h2>Two indexes. One CLI. Lives next to your vault.</h2>
+      <p>QMD Search is a thin Obsidian bridge over the <code>qmd</code> CLI — the same engine you can use from your terminal. The plugin watches the vault for changes, debounces reindex calls, and shows you what each layer of the index is doing in plain language.</p>
+      <p>Embeddings are stored locally in a small SQLite file alongside the index. Nothing leaves your machine.</p>
+    </div>
+    <div class="layers-diagram">
+      <div class="center">
+        <div class="label">your vault</div>
+        <div class="box">Markdown notes</div>
+      </div>
+      <div class="arrows">│<br>▼</div>
+      <div class="center">
+        <div class="box accent">qmd index</div>
+      </div>
+      <div class="arrows">┌─────┴─────┐</div>
+      <div class="row">
+        <div>
+          <div class="label">layer · lexical</div>
+          <div class="box">BM25</div>
+        </div>
+        <div>
+          <div class="label">layer · semantic</div>
+          <div class="box">vectors</div>
+        </div>
+      </div>
+      <div class="arrows">└─────┬─────┘<br>▼</div>
+      <div class="center">
+        <div class="box">rerank → results</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── CTA strip ───────────── -->
+<section class="cta-strip">
+  <div class="wrap">
+    <div class="cta-card">
+      <div>
+        <h2>Try it on your vault.</h2>
+        <p>Pre-release · installs via BRAT in under a minute · uninstall anytime.</p>
+      </div>
+      <div class="ctas" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn primary" href={`${import.meta.env.BASE_URL}/docs#install`}>Read the install guide<span class="arrow">→</span></a>
+        <a class="btn ghost" href={`${import.meta.env.BASE_URL}/docs#use`}>How to use</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────── Footer ───────────── -->
+</Base>

@@ -1,0 +1,75 @@
+---
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL;
+---
+<Base
+  title="Attribution · QMD Search for Obsidian"
+  description="Upstream projects, libraries and assets that QMD Search builds on."
+  activePage="attribution"
+>
+
+<div class="wrap">
+  <article class="prose">
+    <div class="eyebrow">Credits</div>
+    <h1>Standing on shoulders.</h1>
+    <p class="lead">
+      QMD Search is a thin bridge over a stack of excellent upstream projects. None of them are affiliated with this plugin, and none endorse it — but it could not exist without them.
+    </p>
+
+    <section>
+      <h2>Core dependencies</h2>
+      <div class="credits">
+        <div class="credit">
+          <div class="role">Host application</div>
+          <h3>Obsidian</h3>
+          <p>Knowledge-base app for plain-text Markdown vaults. QMD Search is a community plugin that registers into Obsidian's plugin API; the app itself is proprietary and is not redistributed here.</p>
+          <a href="https://obsidian.md" target="_blank" rel="noopener">obsidian.md →</a>
+        </div>
+        <div class="credit">
+          <div class="role">Search engine</div>
+          <h3>qmd</h3>
+          <p>Local-first hybrid search engine. Provides the lexical (BM25) and semantic (vector) indexes, the embedding pipeline, and the reranker. Invoked by the plugin via its CLI.</p>
+          <a href="https://github.com/tobi/qmd" target="_blank" rel="noopener">qmd repository →</a>
+        </div>
+        <div class="credit">
+          <div class="role">Distribution</div>
+          <h3>BRAT</h3>
+          <p>Beta Reviewer's Auto-update Tool — the Obsidian community's de facto channel for testing pre-release plugins. QMD Search is distributed through BRAT until it graduates to the official directory.</p>
+          <a href="https://github.com/TfTHacker/obsidian42-brat" target="_blank" rel="noopener">obsidian42-brat →</a>
+        </div>
+        <div class="credit">
+          <div class="role">Typography</div>
+          <h3>IBM Plex</h3>
+          <p>Sans and Mono superfamily by IBM. Used for the documentation site (this page) and as the type reference in the plugin's UI artifacts. Open Font License.</p>
+          <a href="https://www.ibm.com/plex/" target="_blank" rel="noopener">ibm.com/plex →</a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Trademarks &amp; non-affiliation</h2>
+      <p>
+        Obsidian® is a trademark of Dynalist Inc. QMD Search is an independent, unofficial community plugin and is not affiliated with, endorsed by, or sponsored by Obsidian or Dynalist Inc.
+      </p>
+      <p>
+        The qmd name and command-line tool are property of their respective authors; this plugin merely invokes the public CLI and bundles no qmd source code.
+      </p>
+    </section>
+
+    <section>
+      <h2>Documentation site</h2>
+      <p>
+        This site is built statically with <a href="https://astro.build" target="_blank" rel="noopener">Astro</a> and hosted on GitHub Pages. No analytics, no third-party trackers, no client-side JavaScript beyond what your browser ships natively. Fonts are loaded from Google Fonts' CDN.
+      </p>
+    </section>
+
+    <section>
+      <h2>License</h2>
+      <p>
+        The plugin and this site are released under the <a href={`${base}/license`}>MIT License</a>. Upstream projects retain their own licenses (see links above).
+      </p>
+    </section>
+  </article>
+</div>
+
+</Base>
