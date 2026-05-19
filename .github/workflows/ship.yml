@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -66,15 +67,32 @@ jobs:
       - run: npm run build
 
       # ── Commit & tag ───────────────────────────────────────────────────────
+      # main is PR-protected, so the version bump goes through a PR that the
+      # workflow opens and immediately merges (0 required approvals).
       - name: Commit and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+          BRANCH="chore/release-v${VERSION}"
+
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add manifest.json versions.json
-          git commit -m "chore: release v${{ steps.bump.outputs.version }}"
-          git tag "v${{ steps.bump.outputs.version }}"
-          git push origin HEAD:main
-          git push origin "v${{ steps.bump.outputs.version }}"
+          git commit -m "chore: release v${VERSION}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "chore: release v${VERSION}" \
+            --body "Automated version bump — ship workflow." \
+            --base main \
+            --head "$BRANCH"
+          gh pr merge "$BRANCH" --merge --delete-branch
+
+          git fetch origin main
+          git tag "v${VERSION}" origin/main
+          git push origin "v${VERSION}"
 
       # ── Package & publish ──────────────────────────────────────────────────
       - name: Package plugin zip
