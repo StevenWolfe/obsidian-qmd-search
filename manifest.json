@@ -1,7 +1,7 @@
 {
   "id": "obsidian-qmd-search",
   "name": "QMD Search",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "minAppVersion": "1.0.0",
   "description": "Local semantic and keyword search over qmd-indexed knowledge bases.",
   "author": "StevenWolfe",
