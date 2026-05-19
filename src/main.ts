@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { execFile } = require('child_process') as typeof import('child_process');
 
 import { Notice, Plugin, TAbstractFile } from 'obsidian';
@@ -134,7 +133,7 @@ export default class QmdSearchPlugin extends Plugin {
     el.empty();
 
     const dot = el.createSpan({ cls: 'qmd-dot' });
-    const label = el.createSpan({ cls: 'qmd-sb-label', text: 'qmd' });
+    el.createSpan({ cls: 'qmd-sb-label', text: 'qmd' });
     const value = el.createSpan({ cls: 'qmd-sb-value' });
 
     switch (s.kind) {

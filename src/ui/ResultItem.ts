@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path') as typeof import('path');
 
 import type { QmdResult } from '../client/types';
