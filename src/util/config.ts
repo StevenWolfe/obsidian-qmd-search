@@ -1,10 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const fs = require('fs') as typeof import('fs');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const os = require('os') as typeof import('os');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path') as typeof import('path');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { execFile } = require('child_process') as typeof import('child_process');
 import yaml from 'js-yaml';
 

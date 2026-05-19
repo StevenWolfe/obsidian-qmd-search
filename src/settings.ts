@@ -1,16 +1,12 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { execFile } = require('child_process') as typeof import('child_process');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const fs = require('fs') as typeof import('fs');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const os = require('os') as typeof import('os');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path') as typeof import('path');
 
 import { App, Menu, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type QmdSearchPlugin from './main';
 import { type LogLevel, setLogLevel, log } from './util/log';
-import { buildEnv, resolveQmdBinary } from './util/env';
+import { buildEnv } from './util/env';
 import { loadCollectionNames } from './util/config';
 import type { QmdStatus, IndexHealth } from './client/types';
 import { computeIndexHealth } from './client/types';
@@ -63,22 +59,6 @@ function runVersion(binary: string): Promise<string> {
 }
 
 /** Populate a <select> element with options, restoring the current value. */
-function populateSelect(sel: HTMLSelectElement, options: { value: string; label: string }[], current: string): void {
-  const allValues = options.map((o) => o.value);
-  while (sel.options.length) sel.remove(0);
-  for (const { value, label } of options) {
-    const opt = document.createElement('option');
-    opt.value = value; opt.text = label;
-    sel.add(opt);
-  }
-  if (current && !allValues.includes(current)) {
-    const opt = document.createElement('option');
-    opt.value = current; opt.text = current;
-    sel.add(opt);
-  }
-  sel.value = current;
-}
-
 export class CollectionNameModal extends Modal {
   private resolved = false;
 
@@ -445,12 +425,10 @@ export class QmdSettingTab extends PluginSettingTab {
 
     // Default collection — prefer live names from qmd status; fall back to index.yml
     const collectionNames = liveCollectionNames ?? loadCollectionNames();
-    let collectionSelectEl: HTMLSelectElement | undefined;
     new Setting(section)
       .setName('Default collection')
       .setDesc('Pre-selected collection in the search modal.')
       .addDropdown((dd) => {
-        collectionSelectEl = dd.selectEl;
         dd.addOption('', 'All collections');
         for (const name of collectionNames) dd.addOption(name, name);
         if (this.plugin.settings.defaultCollection && !collectionNames.includes(this.plugin.settings.defaultCollection)) {
@@ -677,7 +655,6 @@ export class QmdSettingTab extends PluginSettingTab {
       .addButton((btn) => {
         btn.setButtonText('Open folder').onClick(async () => {
           const configDir = path.join(os.homedir(), '.config', 'qmd');
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
           const { shell } = require('electron') as typeof import('electron');
           const target = fs.existsSync(configDir) ? configDir : null;
           if (!target) {

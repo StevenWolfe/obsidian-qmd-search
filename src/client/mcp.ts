@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const http = require('http') as typeof import('http');
 
 import { log } from '../util/log';
@@ -47,7 +46,6 @@ export class McpQmdClient implements QmdClient {
   async init(): Promise<void> {
     this.initAbort = new AbortController();
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const fs = require('fs') as typeof import('fs');
     // Validate binary before spawning — spawning a non-existent file in
     // Electron's renderer corrupts IPC channel state.

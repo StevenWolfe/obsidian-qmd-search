@@ -1,12 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const fs = require('fs') as typeof import('fs');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const net = require('net') as typeof import('net');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const os = require('os') as typeof import('os');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path') as typeof import('path');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { spawn } = require('child_process') as typeof import('child_process');
 
 import type { ChildProcess } from 'child_process';
