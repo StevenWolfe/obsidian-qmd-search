@@ -21,6 +21,7 @@ const MODE_CMD: Record<SearchOptions['mode'], string> = {
 // Strip ANSI/VT100 escape sequences — qmd emits cursor-hide/show codes
 // (\x1b[?25l, \x1b[?25h) to stderr when it thinks it's in a TTY, which
 // Node embeds verbatim into execFile error messages.
+// eslint-disable-next-line no-control-regex
 const ANSI_RE = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const stripAnsi = (s: string) => s.replace(ANSI_RE, '');
 
@@ -95,7 +96,7 @@ function parseStatusText(raw: string): QmdStatus {
   // Collection entries are indented 2 spaces followed by name + (qmd://...)
   // Child properties (Files:, Updated:) are indented 4+ spaces.
   for (let i = 0; i < lines.length; i++) {
-    const collMatch = lines[i].match(/^  (\S+)\s+\(qmd:\/\//);
+    const collMatch = lines[i].match(/^ {2}(\S+)\s+\(qmd:\/\//);
     if (!collMatch) continue;
 
     const name = collMatch[1];

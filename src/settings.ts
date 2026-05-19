@@ -52,7 +52,7 @@ function runVersion(binary: string): Promise<string> {
   }
   return new Promise((resolve, reject) => {
     execFile(binary, ['--version'], { timeout: 5000, env: buildEnv() }, (err, stdout) => {
-      if (err) reject(err);
+      if (err) reject(new Error(err.message));
       else resolve(stdout.trim());
     });
   });
@@ -119,7 +119,7 @@ export class QmdSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     const wasAdvancedOpen =
-      (containerEl.querySelector('.qmd-advanced-section') as HTMLDetailsElement | null)?.open ?? false;
+      containerEl.querySelector<HTMLDetailsElement>('.qmd-advanced-section')?.open ?? false;
     containerEl.empty();
     containerEl.addClass('qmd-settings');
 
@@ -213,7 +213,7 @@ export class QmdSettingTab extends PluginSettingTab {
             this.plugin.resolvedBinaryPath,
             ['collection', 'add', vaultPath, '--name', name],
             { timeout: 30_000, env: buildEnv() },
-            (err) => (err ? reject(err) : resolve()),
+            (err) => (err ? reject(new Error(err.message)) : resolve()),
           );
         });
         new Notice(`QMD: generating embeddings for "${name}"…`);
@@ -335,7 +335,7 @@ export class QmdSettingTab extends PluginSettingTab {
             this.plugin.resolvedBinaryPath,
             ['collection', 'add', vaultPath, '--name', name],
             { timeout: 30_000, env: buildEnv() },
-            (err) => (err ? reject(err) : resolve()),
+            (err) => (err ? reject(new Error(err.message)) : resolve()),
           );
         });
         new Notice(`QMD: "${name}" registered ✓`);
@@ -381,7 +381,7 @@ export class QmdSettingTab extends PluginSettingTab {
                   this.plugin.resolvedBinaryPath,
                   ['collection', 'remove', col.name],
                   { timeout: 10_000, env: buildEnv() },
-                  (err) => (err ? reject(err) : resolve()),
+                  (err) => (err ? reject(new Error(err.message)) : resolve()),
                 );
               });
               new Notice(`QMD: removed "${col.name}" ✓`);
