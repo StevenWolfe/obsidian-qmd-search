@@ -241,8 +241,8 @@ export class QmdSettingTab extends PluginSettingTab {
           .addOption('semantic', 'Semantic')
           .addOption('hybrid', 'Hybrid (default)')
           .setValue(this.plugin.settings.defaultSearchMode)
-          .onChange(async (value: 'keyword' | 'semantic' | 'hybrid') => {
-            this.plugin.settings.defaultSearchMode = value;
+          .onChange(async (value) => {
+            this.plugin.settings.defaultSearchMode = value as 'keyword' | 'semantic' | 'hybrid';
             await this.plugin.saveSettings(false);
           });
       });
@@ -372,8 +372,8 @@ export class QmdSettingTab extends PluginSettingTab {
         dd.addOption('cli', 'CLI (default)')
           .addOption('mcp-http', 'MCP HTTP daemon')
           .setValue(this.plugin.settings.transportMode)
-          .onChange(async (value: 'cli' | 'mcp-http') => {
-            this.plugin.settings.transportMode = value;
+          .onChange(async (value) => {
+            this.plugin.settings.transportMode = value as 'cli' | 'mcp-http';
             await this.plugin.saveSettings();
             this.display();
           });
@@ -447,9 +447,9 @@ export class QmdSettingTab extends PluginSettingTab {
           .addOption('warn',  'Warnings + errors')
           .addOption('debug', 'Debug (verbose)')
           .setValue(this.plugin.settings.logLevel)
-          .onChange(async (value: LogLevel) => {
-            this.plugin.settings.logLevel = value;
-            setLogLevel(value);
+          .onChange(async (value) => {
+            this.plugin.settings.logLevel = value as LogLevel;
+            setLogLevel(value as LogLevel);
             await this.plugin.saveSettings(false);
           }),
       );
