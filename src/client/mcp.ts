@@ -77,7 +77,7 @@ export class McpQmdClient implements QmdClient {
         params: {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'qmd-search', version: '0.1.0' },
+          clientInfo: { name: 'obsidian-qmd-search', version: '0.1.0' },
         },
         id: 0,
       });
