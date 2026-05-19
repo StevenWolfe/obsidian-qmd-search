@@ -967,7 +967,8 @@
 }
 
 .qmd-col-icon {
-  font-size: 0.9em;
+  font-size: 1.25em;
+  line-height: 1;
   flex-shrink: 0;
 }
 
