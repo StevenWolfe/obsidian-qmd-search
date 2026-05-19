@@ -2,10 +2,7 @@ name: CI
 
 on:
   push:
-    # Include chore/release-v* so ship.yml's branch push triggers CI.
-    # GITHUB_TOKEN-created PRs don't fire pull_request events, but the
-    # branch push still fires — this makes auto-merge work without a PAT.
-    branches: [main, "claude/**", "chore/release-v*"]
+    branches: [main, "claude/**"]
   pull_request:
     branches: [main]
   workflow_call:
