@@ -78,16 +78,7 @@ export default class QmdSearchPlugin extends Plugin {
     // Show onboarding after Obsidian has fully loaded
     setTimeout(() => {
       if (!this.settings.onboardingDone) {
-        this.client.status().then((s) => {
-          if (s.collections.length === 0) {
-            new OnboardingModal(this.app, this).open();
-          }
-        }).catch(() => {
-          // binary not found or other error — show onboarding anyway
-          if (!this.settings.onboardingDone) {
-            new OnboardingModal(this.app, this).open();
-          }
-        });
+        new OnboardingModal(this.app, this).open();
       }
     }, 500);
   }
