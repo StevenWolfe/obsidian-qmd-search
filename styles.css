@@ -236,6 +236,82 @@
 
 .qmd-status-table th { color: var(--text-muted); font-weight: 500; }
 
+/* ── Status sections (modal + settings inline) ────────────── */
+.qmd-status-section {
+  margin-top: 14px;
+}
+
+.qmd-status-section-heading {
+  font-size: 0.78em;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.qmd-status-kv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88em;
+}
+
+.qmd-kv-key {
+  color: var(--text-muted);
+  padding: 3px 16px 3px 2px;
+  white-space: nowrap;
+  vertical-align: top;
+  width: 1%;
+}
+
+.qmd-kv-value {
+  color: var(--text-normal);
+  padding: 3px 2px;
+  word-break: break-all;
+}
+
+.qmd-status-meta {
+  font-size: 0.82em;
+  color: var(--text-normal);
+  margin: 3px 0 2px;
+}
+
+.qmd-status-docs-line {
+  font-size: 0.82em;
+  margin: 0 0 6px;
+}
+
+/* ── Collection name modal ────────────────────────────────── */
+.qmd-collection-name-modal .modal-content {
+  padding: 20px;
+  min-width: 360px;
+}
+
+.qmd-collection-name-modal h3 {
+  margin: 0 0 12px;
+}
+
+.qmd-collection-name-input {
+  display: block;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.95em;
+  box-sizing: border-box;
+}
+
+.qmd-collection-name-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ── Settings tab ─────────────────────────────────────────── */
 .qmd-advanced-section {
   border: 1px solid var(--background-modifier-border);

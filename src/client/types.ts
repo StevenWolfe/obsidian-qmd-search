@@ -51,6 +51,20 @@ export interface QmdStatus {
   healthy: boolean;
   message: string;
   collections: QmdCollectionStatus[];
+  // Extended fields parsed from qmd status (CLI transport only)
+  indexPath?: string;
+  indexSize?: string;
+  totalDocs?: number;
+  totalVectors?: number;
+  astChunkingActive?: boolean;
+  astLanguages?: string[];
+  embeddingModel?: string;
+  rerankingModel?: string;
+  generationModel?: string;
+  gpuInfo?: string;
+  gpuDevice?: string;
+  gpuVram?: string;
+  cpuCores?: string;
 }
 
 export type SearchMode = 'keyword' | 'semantic' | 'hybrid';

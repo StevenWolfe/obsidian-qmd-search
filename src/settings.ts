@@ -7,8 +7,9 @@ const os = require('os') as typeof import('os');
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const path = require('path') as typeof import('path');
 
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type QmdSearchPlugin from './main';
+import { StatusModal } from './ui/StatusModal';
 import { type LogLevel, setLogLevel, log } from './util/log';
 import { buildEnv, resolveQmdBinary } from './util/env';
 import { loadCollectionNames } from './util/config';
@@ -70,6 +71,58 @@ function populateSelect(sel: HTMLSelectElement, options: { value: string; label:
   sel.value = current;
 }
 
+class CollectionNameModal extends Modal {
+  private resolved = false;
+
+  constructor(
+    app: App,
+    private readonly defaultValue: string,
+    private readonly onSubmit: (name: string | null) => void,
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    this.modalEl.addClass('qmd-collection-name-modal');
+    const { contentEl } = this;
+    contentEl.createEl('h3', { text: 'Register vault as collection' });
+    const input = contentEl.createEl('input', { type: 'text', value: this.defaultValue, placeholder: 'Collection name' });
+    input.classList.add('qmd-collection-name-input');
+
+    const btnRow = contentEl.createDiv({ cls: 'qmd-collection-name-buttons' });
+    const registerBtn = btnRow.createEl('button', { text: 'Register', cls: 'mod-cta' });
+    const cancelBtn = btnRow.createEl('button', { text: 'Cancel' });
+
+    const submit = () => {
+      if (this.resolved) return;
+      const name = input.value.trim();
+      if (!name) return;
+      this.resolved = true;
+      this.close();
+      this.onSubmit(name);
+    };
+    const cancel = () => {
+      if (this.resolved) return;
+      this.resolved = true;
+      this.close();
+      this.onSubmit(null);
+    };
+
+    registerBtn.addEventListener('click', submit);
+    cancelBtn.addEventListener('click', cancel);
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter') submit();
+      else if (e.key === 'Escape') cancel();
+    });
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+  }
+
+  onClose(): void {
+    if (!this.resolved) { this.resolved = true; this.onSubmit(null); }
+    this.contentEl.empty();
+  }
+}
+
 export class QmdSettingTab extends PluginSettingTab {
   private statusEl: HTMLElement | null = null;
 
@@ -99,6 +152,18 @@ export class QmdSettingTab extends PluginSettingTab {
         cls: s.healthy ? 'qmd-status-ok' : 'qmd-status-err',
       });
       if (s.message) health.createEl('span', { text: ` — ${s.message}`, cls: 'qmd-status-message' });
+
+      if (s.indexPath || s.indexSize) {
+        const meta = el.createDiv({ cls: 'qmd-status-meta' });
+        if (s.indexPath) meta.createEl('span', { text: s.indexPath.split('/').pop() ?? s.indexPath });
+        if (s.indexSize) meta.createEl('span', { text: ` (${s.indexSize})`, cls: 'qmd-muted' });
+      }
+      if (s.totalDocs !== undefined || s.totalVectors !== undefined) {
+        const parts: string[] = [];
+        if (s.totalDocs !== undefined) parts.push(`${s.totalDocs} docs`);
+        if (s.totalVectors !== undefined) parts.push(`${s.totalVectors} vectors`);
+        el.createEl('p', { text: parts.join(' · '), cls: 'qmd-status-docs-line qmd-muted' });
+      }
 
       if (s.collections.length === 0) {
         el.createEl('p', { text: 'No collections registered.', cls: 'qmd-muted' });
@@ -284,6 +349,9 @@ export class QmdSettingTab extends PluginSettingTab {
       this.plugin.refreshStatusBar();
     });
 
+    const statusBtn = actionRow.createEl('button', { text: 'Full status' });
+    statusBtn.addEventListener('click', () => new StatusModal(this.app, this.plugin).open());
+
     // ── Register vault as collection ─────────────────────────
     new Setting(containerEl)
       .setName('Register vault as collection')
@@ -292,14 +360,18 @@ export class QmdSettingTab extends PluginSettingTab {
         btn.setButtonText('Register…').onClick(async () => {
           const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
           const vaultName = this.app.vault.getName();
-          const name = prompt('Collection name:', vaultName);
+
+          const name = await new Promise<string | null>((resolve) => {
+            new CollectionNameModal(this.app, vaultName, resolve).open();
+          });
           if (!name) return;
 
+          btn.setDisabled(true);
           new Notice(`QMD: registering collection "${name}"…`);
           try {
             await new Promise<void>((resolve, reject) => {
               execFile(
-                this.plugin.settings.qmdBinaryPath,
+                this.plugin.resolvedBinaryPath,
                 ['collection', 'add', vaultPath, '--name', name],
                 { timeout: 30_000, env: buildEnv() },
                 (err) => (err ? reject(err) : resolve()),
@@ -309,7 +381,7 @@ export class QmdSettingTab extends PluginSettingTab {
             new Notice(`QMD: generating embeddings for "${name}"…`);
             await new Promise<void>((resolve, reject) => {
               execFile(
-                this.plugin.settings.qmdBinaryPath,
+                this.plugin.resolvedBinaryPath,
                 ['embed'],
                 { timeout: 600_000, env: buildEnv() },
                 (err) => (err ? reject(err) : resolve()),
@@ -320,6 +392,8 @@ export class QmdSettingTab extends PluginSettingTab {
             this.renderStatus();
           } catch (err) {
             new Notice(`QMD: registration failed — ${(err as Error).message}`);
+          } finally {
+            if (btn.buttonEl.isConnected) btn.setDisabled(false);
           }
         });
       });
