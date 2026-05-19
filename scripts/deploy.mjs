@@ -13,7 +13,7 @@ if (!existsSync('main.js')) {
   process.exit(1);
 }
 
-const dest = join(vaultPath, '.obsidian', 'plugins', 'qmd-search');
+const dest = join(vaultPath, '.obsidian', 'plugins', 'obsidian-qmd-search');
 mkdirSync(dest, { recursive: true });
 
 for (const file of ['main.js', 'manifest.json', 'styles.css']) {

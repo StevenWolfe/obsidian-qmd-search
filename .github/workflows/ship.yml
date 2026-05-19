@@ -97,9 +97,9 @@ jobs:
       # ── Package & publish ──────────────────────────────────────────────────
       - name: Package plugin zip
         run: |
-          mkdir -p qmd-search
-          cp main.js manifest.json styles.css qmd-search/
-          zip -r qmd-search.zip qmd-search/
+          mkdir -p obsidian-qmd-search
+          cp main.js manifest.json styles.css obsidian-qmd-search/
+          zip -r obsidian-qmd-search.zip obsidian-qmd-search/
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
@@ -107,7 +107,7 @@ jobs:
           tag_name: v${{ steps.bump.outputs.version }}
           name: v${{ steps.bump.outputs.version }}
           files: |
-            qmd-search.zip
+            obsidian-qmd-search.zip
             main.js
             manifest.json
             styles.css
