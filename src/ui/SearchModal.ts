@@ -1,31 +1,59 @@
-import { App, Modal, Notice, TFile, prepareFuzzySearch } from 'obsidian';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const path = require('path') as typeof import('path');
+
+import { App, Modal } from 'obsidian';
 import type { QmdClient } from '../client/base';
 import type { QmdSearchSettings } from '../settings';
 import type { QmdResult, SearchMode } from '../client/types';
 import { loadCollectionNames } from '../util/config';
 import { navigateToResult } from '../util/navigate';
-import { buildResultItem } from './ResultItem';
 import { log } from '../util/log';
+import type QmdSearchPlugin from '../main';
 
-interface ModelLoadedHost {
-  modelLoaded: boolean;
+const SUGGESTION_CHIPS = [
+  'notes about my homelab',
+  'decisions I made last week',
+  'unfinished drafts',
+];
+
+/** Sanitize snippet HTML — allow only <mark> tags */
+function sanitizeSnippet(html: string): string {
+  return html.replace(/<(?!\/?mark\b)[^>]+>/gi, '');
+}
+
+/** Render 5-bar score indicator */
+function buildScoreBars(score: number): HTMLElement {
+  const container = document.createElement('span');
+  container.className = 'qmd-score-bars';
+  const filled = Math.round(score * 5);
+  for (let i = 0; i < 5; i++) {
+    const bar = container.createDiv({ cls: i < filled ? 'qmd-score-bar qmd-score-bar--filled' : 'qmd-score-bar' });
+    void bar;
+  }
+  return container;
 }
 
 export class SearchModal extends Modal {
   private queryInput!: HTMLInputElement;
   private collectionSelect!: HTMLSelectElement;
-  private intentInput!: HTMLInputElement;
-  private intentRow!: HTMLElement;
-  private resultsArea!: HTMLElement;
-  private qmdContainer!: HTMLElement;
-  private vaultContainer!: HTMLElement;
   private activeMode: SearchMode;
+  private resultsEl!: HTMLElement;
+  private statusLine!: HTMLElement;
+  private footerMode!: HTMLElement;
+
+  // For keyboard navigation
+  private focusedIndex = -1;
+  private resultItems: HTMLElement[] = [];
+
+  // Debounce / cancellation
+  private debounceTimer: number | null = null;
+  private searchGeneration = 0;
 
   constructor(
     app: App,
     private readonly client: QmdClient,
     private readonly settings: QmdSearchSettings,
-    private readonly plugin: ModelLoadedHost,
+    private readonly plugin: QmdSearchPlugin,
   ) {
     super(app);
     this.activeMode = settings.defaultSearchMode;
@@ -35,17 +63,41 @@ export class SearchModal extends Modal {
     const { contentEl } = this;
     this.modalEl.addClass('qmd-search-modal');
 
-    // Query input
-    this.queryInput = contentEl.createEl('input', {
+    // ── Search bar ─────────────────────────────────────────────
+    const searchBar = contentEl.createDiv({ cls: 'qmd-search-bar' });
+    const searchIcon = searchBar.createSpan({ cls: 'qmd-search-icon', text: '🔍' });
+    void searchIcon;
+
+    this.queryInput = searchBar.createEl('input', {
       type: 'text',
       cls: 'qmd-query-input',
       attr: { placeholder: 'Search your notes…', 'aria-label': 'Search query' },
     });
 
-    // Collection dropdown
-    const collectionRow = contentEl.createDiv({ cls: 'qmd-control-row' });
-    collectionRow.createEl('label', { text: 'Collection', cls: 'qmd-label' });
-    this.collectionSelect = collectionRow.createEl('select', { cls: 'qmd-collection-select' });
+    // ── Toolbar ────────────────────────────────────────────────
+    const toolbar = contentEl.createDiv({ cls: 'qmd-toolbar' });
+
+    // Mode segmented control
+    const modeGroup = toolbar.createDiv({ cls: 'qmd-mode-group' });
+    for (const [label, value] of [
+      ['Keyword', 'keyword'],
+      ['Semantic', 'semantic'],
+      ['Hybrid', 'hybrid'],
+    ] as [string, SearchMode][]) {
+      const btn = modeGroup.createEl('button', { text: label, cls: 'qmd-mode-btn' });
+      if (value === this.activeMode) btn.addClass('qmd-mode-btn--active');
+      btn.addEventListener('click', () => {
+        this.activeMode = value;
+        modeGroup.querySelectorAll('.qmd-mode-btn').forEach((b) => b.classList.remove('qmd-mode-btn--active'));
+        btn.addClass('qmd-mode-btn--active');
+        this.footerMode.setText(label);
+        if (this.queryInput.value.trim()) this.scheduleSearch();
+      });
+    }
+
+    // "in" label + collection select
+    toolbar.createEl('span', { cls: 'qmd-toolbar-in', text: 'in' });
+    this.collectionSelect = toolbar.createEl('select', { cls: 'qmd-collection-select' });
     this.collectionSelect.createEl('option', { value: '', text: 'All collections' });
     for (const name of loadCollectionNames()) {
       this.collectionSelect.createEl('option', { value: name, text: name });
@@ -53,168 +105,260 @@ export class SearchModal extends Modal {
     if (this.settings.defaultCollection) {
       this.collectionSelect.value = this.settings.defaultCollection;
     }
-
-    // Mode segmented control
-    const modeRow = contentEl.createDiv({ cls: 'qmd-mode-row' });
-    for (const [label, value] of [
-      ['Keyword', 'keyword'],
-      ['Semantic', 'semantic'],
-      ['Hybrid', 'hybrid'],
-    ] as [string, SearchMode][]) {
-      const btn = modeRow.createEl('button', { text: label, cls: 'qmd-mode-btn' });
-      if (value === this.activeMode) btn.addClass('qmd-mode-btn--active');
-      btn.addEventListener('click', () => {
-        this.activeMode = value;
-        modeRow.querySelectorAll('.qmd-mode-btn').forEach((b) => b.classList.remove('qmd-mode-btn--active'));
-        btn.addClass('qmd-mode-btn--active');
-      });
-    }
-
-    // Intent collapsible
-    const intentWrapper = contentEl.createDiv({ cls: 'qmd-intent-wrapper' });
-    const intentToggle = intentWrapper.createEl('button', {
-      cls: 'qmd-intent-toggle',
-      attr: { 'aria-expanded': 'false' },
-    });
-    intentToggle.innerHTML = '&#x25B8; Intent';
-    this.intentRow = intentWrapper.createDiv({ cls: 'qmd-intent-row qmd-intent-row--hidden' });
-    this.intentInput = this.intentRow.createEl('input', {
-      type: 'text',
-      cls: 'qmd-intent-input',
-      attr: { placeholder: 'e.g. web performance (steers ranking, not a search term)' },
-    });
-    intentToggle.addEventListener('click', () => {
-      const hidden = this.intentRow.hasClass('qmd-intent-row--hidden');
-      this.intentRow.toggleClass('qmd-intent-row--hidden', !hidden);
-      intentToggle.setAttribute('aria-expanded', String(hidden));
-      intentToggle.innerHTML = (hidden ? '&#x25BE; Intent' : '&#x25B8; Intent');
+    this.collectionSelect.addEventListener('change', () => {
+      if (this.queryInput.value.trim()) this.scheduleSearch();
     });
 
-    // Results area — two sections (hidden until first search)
-    this.resultsArea = contentEl.createDiv({ cls: 'qmd-results qmd-results--hidden' });
+    // Status chip (shows result count or is empty)
+    this.statusLine = toolbar.createEl('span', { cls: 'qmd-status-chip' });
 
-    const qmdSection = this.resultsArea.createDiv({ cls: 'qmd-results-section' });
-    qmdSection.createEl('h4', { text: 'qmd', cls: 'qmd-results-section-heading' });
-    this.qmdContainer = qmdSection.createDiv({ cls: 'qmd-results-section-body' });
+    // ── Results / empty state ──────────────────────────────────
+    this.resultsEl = contentEl.createDiv({ cls: 'qmd-results' });
+    this.renderEmptyState();
 
-    const vaultSection = this.resultsArea.createDiv({ cls: 'qmd-results-section' });
-    vaultSection.createEl('h4', { text: 'vault search', cls: 'qmd-results-section-heading' });
-    this.vaultContainer = vaultSection.createDiv({ cls: 'qmd-results-section-body' });
-
-    // Submit on Enter
-    this.queryInput.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') this.runSearch();
+    // ── Footer ─────────────────────────────────────────────────
+    const footer = contentEl.createDiv({ cls: 'qmd-search-footer' });
+    footer.createEl('span', { cls: 'qmd-footer-hint', text: '↑↓ navigate' });
+    footer.createEl('span', { cls: 'qmd-footer-sep', text: '·' });
+    footer.createEl('span', { cls: 'qmd-footer-hint', text: '↵ open' });
+    footer.createEl('span', { cls: 'qmd-footer-sep', text: '·' });
+    footer.createEl('span', { cls: 'qmd-footer-hint', text: '⌘↵ new tab' });
+    const modeLabel = (['keyword', 'semantic', 'hybrid'] as SearchMode[]).find((m) => m === this.activeMode) ?? 'hybrid';
+    this.footerMode = footer.createEl('span', {
+      cls: 'qmd-footer-mode',
+      text: modeLabel.charAt(0).toUpperCase() + modeLabel.slice(1),
     });
+
+    // ── Event listeners ────────────────────────────────────────
+    this.queryInput.addEventListener('input', () => this.scheduleSearch());
+    this.queryInput.addEventListener('keydown', (e: KeyboardEvent) => this.handleKeydown(e));
 
     this.queryInput.focus();
   }
 
-  private async runSearch(): Promise<void> {
-    const query = this.queryInput.value.trim();
-    if (!query) return;
-
-    const isCliHybrid =
-      this.settings.transportMode === 'cli' &&
-      this.activeMode === 'hybrid' &&
-      !this.plugin.modelLoaded;
-
-    const notice = new Notice(isCliHybrid ? 'QMD: loading models and searching…' : 'QMD: searching…', 0);
-
-    // Show results area and set loading state
-    this.resultsArea.removeClass('qmd-results--hidden');
-    this.qmdContainer.empty();
-    this.vaultContainer.empty();
-    this.qmdContainer.createEl('p', { text: 'Searching…', cls: 'qmd-muted' });
-    this.vaultContainer.createEl('p', { text: 'Searching…', cls: 'qmd-muted' });
-
-    // Fire qmd search async while vault search runs synchronously
-    const qmdPromise = this.client.search({
-      query,
-      mode: this.activeMode,
-      collection: this.collectionSelect.value || undefined,
-      intent: this.intentInput.value.trim() || undefined,
-      noRerank: this.settings.noRerank || undefined,
-      candidateLimit: this.settings.candidateLimit || undefined,
-      minScore: this.settings.minScore || undefined,
-    });
-    const vaultFiles = this.searchVault(query);
-
-    // Populate vault results immediately (sync, no waiting)
-    this.renderVaultResults(vaultFiles);
-
-    // Wait for qmd results
-    let qmdResults: QmdResult[] | null = null;
-    let qmdError: Error | null = null;
-    try {
-      qmdResults = await qmdPromise;
-      this.plugin.modelLoaded = true;
-    } catch (err) {
-      qmdError = err as Error;
-      log.error('search failed:', qmdError.message);
-    } finally {
-      notice.hide();
+  private scheduleSearch(): void {
+    if (this.debounceTimer !== null) {
+      window.clearTimeout(this.debounceTimer);
     }
+    this.debounceTimer = window.setTimeout(() => {
+      this.debounceTimer = null;
+      const query = this.queryInput.value.trim();
+      if (query) {
+        void this.runSearch(query);
+      } else {
+        this.renderEmptyState();
+        this.statusLine.setText('');
+      }
+    }, 120);
+  }
 
-    this.qmdContainer.empty();
-    if (qmdError) {
-      this.qmdContainer.createEl('p', { text: `Error: ${qmdError.message}`, cls: 'qmd-error' });
-    } else if (!qmdResults || qmdResults.length === 0) {
-      this.qmdContainer.createEl('p', { text: 'No results.', cls: 'qmd-no-results' });
-    } else {
-      for (const result of qmdResults) {
-        this.qmdContainer.appendChild(buildResultItem(result, async () => {
-          await navigateToResult(this.app, result);
-          this.close();
-        }));
+  private handleKeydown(e: KeyboardEvent): void {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.moveFocus(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.moveFocus(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (this.focusedIndex >= 0 && this.focusedIndex < this.resultItems.length) {
+        const item = this.resultItems[this.focusedIndex];
+        if (e.metaKey || e.ctrlKey) {
+          item.dispatchEvent(new CustomEvent('qmd-open-new-tab'));
+        } else {
+          item.dispatchEvent(new CustomEvent('qmd-open'));
+        }
+      } else if (this.queryInput.value.trim()) {
+        this.scheduleSearch();
       }
     }
   }
 
-  private searchVault(query: string): TFile[] {
-    const fuzzy = prepareFuzzySearch(query);
-    return this.app.vault.getMarkdownFiles()
-      .map((file) => ({ file, result: fuzzy(file.basename) }))
-      .filter((x) => x.result !== null)
-      .sort((a, b) => b.result!.score - a.result!.score)
-      .slice(0, 7)
-      .map((x) => x.file);
+  private moveFocus(delta: number): void {
+    if (this.resultItems.length === 0) return;
+    this.focusedIndex = Math.max(0, Math.min(this.resultItems.length - 1, this.focusedIndex + delta));
+    this.resultItems.forEach((el, i) => {
+      el.classList.toggle('qmd-result-item--focused', i === this.focusedIndex);
+    });
+    this.resultItems[this.focusedIndex]?.scrollIntoView({ block: 'nearest' });
   }
 
-  private renderVaultResults(files: TFile[]): void {
-    this.vaultContainer.empty();
-    if (files.length === 0) {
-      this.vaultContainer.createEl('p', { text: 'No matches.', cls: 'qmd-no-results' });
+  private renderEmptyState(): void {
+    this.resultsEl.empty();
+    this.focusedIndex = -1;
+    this.resultItems = [];
+
+    const recentQueries = this.plugin.recentQueries;
+
+    if (recentQueries.length > 0) {
+      const section = this.resultsEl.createDiv({ cls: 'qmd-empty-section' });
+      section.createEl('div', { cls: 'qmd-empty-section-label', text: 'RECENT' });
+      for (const q of recentQueries) {
+        const row = section.createDiv({ cls: 'qmd-recent-item' });
+        row.createSpan({ cls: 'qmd-recent-icon', text: '🕐' });
+        row.createEl('span', { cls: 'qmd-recent-query', text: q });
+        row.addEventListener('click', () => {
+          this.queryInput.value = q;
+          void this.runSearch(q);
+        });
+      }
+    }
+
+    // Check if any collection has docs (for suggestion chips)
+    const status = this.plugin.pluginStatus;
+    const hasDocs = status.kind === 'idle' && status.docs >= 50;
+
+    if (hasDocs) {
+      const trySection = this.resultsEl.createDiv({ cls: 'qmd-empty-section' });
+      trySection.createEl('div', { cls: 'qmd-empty-section-label', text: 'TRY' });
+      const chips = trySection.createDiv({ cls: 'qmd-suggestion-chips' });
+      for (const chip of SUGGESTION_CHIPS) {
+        const c = chips.createEl('button', { cls: 'qmd-chip', text: chip });
+        c.addEventListener('click', () => {
+          this.queryInput.value = chip;
+          void this.runSearch(chip);
+        });
+      }
+    }
+  }
+
+  private async runSearch(query: string): Promise<void> {
+    const gen = ++this.searchGeneration;
+
+    this.resultsEl.empty();
+    this.focusedIndex = -1;
+    this.resultItems = [];
+    this.resultsEl.createEl('p', { cls: 'qmd-searching', text: 'Searching…' });
+
+    const t0 = Date.now();
+    let results: QmdResult[] | null = null;
+    let searchError: Error | null = null;
+
+    try {
+      results = await this.client.search({
+        query,
+        mode: this.activeMode,
+        collection: this.collectionSelect.value || undefined,
+        noRerank: this.settings.noRerank || undefined,
+        candidateLimit: this.settings.candidateLimit || undefined,
+        minScore: this.settings.minScore || undefined,
+      });
+      this.plugin.modelLoaded = true;
+    } catch (err) {
+      searchError = err as Error;
+      log.error('search failed:', searchError.message);
+    }
+
+    // If a newer search has started, discard these results
+    if (gen !== this.searchGeneration) return;
+
+    const ms = Date.now() - t0;
+    this.resultsEl.empty();
+
+    if (searchError) {
+      this.statusLine.setText('');
+      this.resultsEl.createEl('p', { cls: 'qmd-error', text: `Error: ${searchError.message}` });
       return;
     }
-    for (const file of files) {
-      this.vaultContainer.appendChild(this.buildVaultResultItem(file));
+
+    if (!results || results.length === 0) {
+      this.statusLine.setText('0 results');
+      this.resultsEl.createEl('p', { cls: 'qmd-no-results', text: 'No results.' });
+      return;
+    }
+
+    this.statusLine.setText(`${results.length} results · ${ms} ms`);
+
+    // Record query and report to plugin for status bar
+    this.plugin.addRecentQuery(query);
+    this.plugin.reportSearchResult(results.length, ms);
+
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const item = this.buildResultItem(result, i + 1);
+      this.resultsEl.appendChild(item);
+      this.resultItems.push(item);
     }
   }
 
-  private buildVaultResultItem(file: TFile): HTMLElement {
+  private buildResultItem(result: QmdResult, rank: number): HTMLElement {
     const item = document.createElement('div');
     item.className = 'qmd-result-item';
     item.setAttribute('role', 'button');
     item.tabIndex = 0;
 
-    const header = item.createDiv({ cls: 'qmd-result-header' });
-    header.createEl('span', { cls: 'qmd-result-title', text: file.basename });
-    header.createEl('span', { cls: 'qmd-result-badge qmd-result-badge--vault', text: 'vault' });
-    item.createEl('span', { cls: 'qmd-result-path', text: file.path });
+    // Rank badge
+    const rankBadge = item.createEl('span', {
+      cls: 'qmd-rank-badge',
+      text: String(rank).padStart(2, '0'),
+    });
+    void rankBadge;
 
-    const onClick = async () => {
-      await this.app.workspace.getLeaf(false).openFile(file);
+    // Main content
+    const content = item.createDiv({ cls: 'qmd-result-content' });
+
+    // Title + path row
+    const titleRow = content.createDiv({ cls: 'qmd-result-title-row' });
+    const title = result.title || path.basename(result.path);
+    titleRow.createEl('span', { cls: 'qmd-result-title', text: title });
+    titleRow.createEl('span', { cls: 'qmd-result-path', text: result.path });
+
+    // Snippet
+    if (result.snippet) {
+      const snippetEl = content.createEl('p', { cls: 'qmd-result-snippet' });
+      const hasMarkTags = /<mark>/i.test(result.snippet);
+      if (hasMarkTags) {
+        snippetEl.innerHTML = sanitizeSnippet(result.snippet);
+      } else {
+        snippetEl.setText(result.snippet);
+      }
+    }
+
+    // Score row: percentage + bars + date
+    const scoreRow = content.createDiv({ cls: 'qmd-result-score-row' });
+    scoreRow.createEl('span', { cls: 'qmd-result-score-pct', text: `${Math.round(result.score * 100)}%` });
+    scoreRow.appendChild(buildScoreBars(result.score));
+    if (result.collection) {
+      scoreRow.createEl('span', { cls: 'qmd-result-collection', text: result.collection });
+    }
+
+    // Click handlers
+    const openDefault = async () => {
+      await navigateToResult(this.app, result);
       this.close();
     };
-    item.addEventListener('click', onClick);
-    item.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') void onClick();
+    const openNewTab = async () => {
+      const leaf = this.app.workspace.getLeaf('tab');
+      const file =
+        this.app.vault.getFileByPath(result.path) ??
+        this.app.vault.getMarkdownFiles().find(
+          (f) => f.path.endsWith('/' + result.path) || f.basename === result.path.replace(/\.md$/, ''),
+        ) ??
+        null;
+      if (file) await leaf.openFile(file);
+      this.close();
+    };
+
+    item.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey) void openNewTab();
+      else void openDefault();
     });
+    item.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        if (e.metaKey || e.ctrlKey) void openNewTab();
+        else void openDefault();
+      }
+    });
+    item.addEventListener('qmd-open', () => void openDefault());
+    item.addEventListener('qmd-open-new-tab', () => void openNewTab());
 
     return item;
   }
 
   onClose(): void {
+    if (this.debounceTimer !== null) {
+      window.clearTimeout(this.debounceTimer);
+    }
     this.contentEl.empty();
   }
 }
