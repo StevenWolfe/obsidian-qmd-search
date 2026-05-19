@@ -30,8 +30,11 @@ function runQmd(binary: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(binary, args, { timeout: 60_000, maxBuffer: 10 * 1024 * 1024, env: buildEnv() }, (err, stdout, stderr) => {
       if (err) {
-        const clean = stripAnsi(err.message);
-        log.error('command failed:', clean);
+        // Prefer stderr content over err.message — err.message embeds the full
+        // "Command failed: /path/to/binary arg1 arg2…\n<stderr>" which is noisy.
+        const detail = stderr ? stripAnsi(stderr).trim() : '';
+        const clean = detail || stripAnsi(err.message);
+        log.error('command failed (exit %s):', err.code, clean);
         reject(new Error(clean));
       } else {
         const cleanErr = stderr ? stripAnsi(stderr).trim() : '';
