@@ -99,9 +99,14 @@ jobs:
             --head "$BRANCH"
           gh pr merge "$BRANCH" --auto --merge --delete-branch
 
-          # Wait for the auto-merge to land before tagging
-          gh pr view "$BRANCH" --json state --jq '.state' || true
-          sleep 15
+          # Wait for the auto-merge to land before tagging (poll, don't sleep blind)
+          for i in $(seq 1 30); do
+            STATE=$(gh pr view "$BRANCH" --json state --jq '.state' 2>/dev/null || echo "UNKNOWN")
+            echo "PR state ($i/30): $STATE"
+            if [ "$STATE" = "MERGED" ]; then break; fi
+            sleep 10
+          done
+
           git fetch origin main
           git tag "${VERSION}" origin/main
           git push origin "${VERSION}"
