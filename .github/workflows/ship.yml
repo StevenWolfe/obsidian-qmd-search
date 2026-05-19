@@ -93,11 +93,14 @@ jobs:
             --body "Automated version bump — ship workflow." \
             --base main \
             --head "$BRANCH"
-          gh pr merge "$BRANCH" --merge --delete-branch
+          gh pr merge "$BRANCH" --auto --merge --delete-branch
 
+          # Wait for the auto-merge to land before tagging
+          gh pr view "$BRANCH" --json state --jq '.state' || true
+          sleep 15
           git fetch origin main
-          git tag "v${VERSION}" origin/main
-          git push origin "v${VERSION}"
+          git tag "${VERSION}" origin/main
+          git push origin "${VERSION}"
 
       # ── Package & publish ──────────────────────────────────────────────────
       - name: Package plugin zip
@@ -109,8 +112,8 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: v${{ steps.bump.outputs.version }}
-          name: v${{ steps.bump.outputs.version }}
+          tag_name: ${{ steps.bump.outputs.version }}
+          name: ${{ steps.bump.outputs.version }}
           files: |
             obsidian-qmd-search.zip
             main.js
