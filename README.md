@@ -143,11 +143,18 @@ Steps 1 and 2 auto-complete on plugin init. Skip marks the modal as done permane
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| **QMD: Search** | Open the search modal |
-| **QMD: Re-index collections** | Run `qmd update` to refresh the index |
-| **QMD: Generate embeddings** | Run `qmd embed` to (re)generate vectors |
+| Command | Runs | When to use |
+|---------|------|-------------|
+| **QMD: Search** | *(opens modal)* | Your primary entry point — open this to search |
+| **QMD: Re-index collections** | `qmd update` | After adding, editing, or deleting notes. Updates the text index. Fast. Required for keyword search to see new content. |
+| **QMD: Generate embeddings** | `qmd embed` | After re-indexing, to generate or refresh vector embeddings. Slower (loads the embedding model on first run). Required for semantic and hybrid search to see new content. |
+
+**Typical maintenance workflow:** Re-index → then Embed. Auto-reindex (if enabled) handles Re-index automatically; run Embed manually after bulk changes.
+
+All three commands are available from:
+- **Command palette** (`Ctrl/Cmd+P` → "QMD")
+- **Status bar popover** — Re-index and Embed buttons in the footer
+- **Settings panel** — Re-index and Embed buttons in the health card; Re-index and Generate embeddings in each collection's `⋯` menu
 
 ---
 
