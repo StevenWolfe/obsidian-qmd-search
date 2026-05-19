@@ -125,7 +125,7 @@ The settings panel renders differently depending on index state:
 | `Default collection` | *(all)* | Pre-selects a collection in the search modal |
 | `Default search mode` | Hybrid | Mode the modal opens with |
 | `Auto-reindex on save` | off | Re-indexes after a file is created, modified, or deleted |
-| `Reindex delay` | 3 s | How long to wait after the last change before triggering a reindex (1 s–5 min) |
+| `Reindex delay` | 10 s | How long to wait after the last change before triggering a reindex (1 s–5 min) |
 | `Log level` | error | Console verbosity: `off` · `error` · `warn` · `debug` |
 
 ---

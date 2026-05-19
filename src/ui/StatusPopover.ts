@@ -67,7 +67,7 @@ export class StatusPopover {
       embedBtn.setAttribute('title', 'Generate vector embeddings (qmd embed) — run after re-indexing to enable semantic search');
       embedBtn.addEventListener('click', () => { this.close(); void this.plugin.embed(); });
     }
-    const settingsBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: 'Settings' });
+    const settingsBtn = footer.createEl('button', { cls: 'qmd-popover-btn qmd-popover-btn--settings', text: 'Settings' });
     settingsBtn.addEventListener('click', () => {
       this.close();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
