@@ -10,6 +10,7 @@ import { buildEnv } from './util/env';
 import { loadCollectionNames } from './util/config';
 import type { QmdStatus, IndexHealth } from './client/types';
 import { computeIndexHealth } from './client/types';
+import { timeAgo } from './util/time';
 
 export interface QmdSearchSettings {
   qmdBinaryPath: string;
@@ -112,11 +113,18 @@ export class CollectionNameModal extends Modal {
 }
 
 export class QmdSettingTab extends PluginSettingTab {
+  private tickTimer: number | null = null;
+
   constructor(app: App, private readonly plugin: QmdSearchPlugin) {
     super(app, plugin);
   }
 
+  override hide(): void {
+    if (this.tickTimer !== null) { window.clearInterval(this.tickTimer); this.tickTimer = null; }
+  }
+
   display(): void {
+    if (this.tickTimer !== null) { window.clearInterval(this.tickTimer); this.tickTimer = null; }
     const { containerEl } = this;
     const wasAdvancedOpen =
       containerEl.querySelector<HTMLDetailsElement>('.qmd-advanced-section')?.open ?? false;
@@ -164,13 +172,25 @@ export class QmdSettingTab extends PluginSettingTab {
 
     // ── Async content area ────────────────────────────────────
     const contentArea = containerEl.createDiv({ cls: 'qmd-settings-content' });
-    contentArea.createEl('p', { cls: 'qmd-loading', text: 'Loading index status…' });
+    this.loadContent(contentArea, wasAdvancedOpen);
+  }
 
-    // Fetch status and render appropriate layout
+  /** Refresh only the status content — header and form fields are not touched. */
+  private refreshStatusArea(): void {
+    if (this.tickTimer !== null) { window.clearInterval(this.tickTimer); this.tickTimer = null; }
+    const contentArea = this.containerEl.querySelector<HTMLElement>('.qmd-settings-content');
+    if (!contentArea) { this.display(); return; }
+    const wasAdvancedOpen =
+      contentArea.querySelector<HTMLDetailsElement>('.qmd-advanced-section')?.open ?? false;
+    contentArea.empty();
+    this.loadContent(contentArea, wasAdvancedOpen);
+  }
+
+  private loadContent(contentArea: HTMLElement, wasAdvancedOpen: boolean): void {
+    contentArea.createEl('p', { cls: 'qmd-loading', text: 'Loading index status…' });
     this.plugin.client.status().then((status) => {
       if (!contentArea.isConnected) return;
       contentArea.empty();
-
       if (status.collections.length === 0) {
         this.renderFirstRun(contentArea, wasAdvancedOpen);
       } else {
@@ -179,12 +199,28 @@ export class QmdSettingTab extends PluginSettingTab {
         const health = computeIndexHealth(totalDocs, totalVectors);
         this.renderHealthy(contentArea, status, health, wasAdvancedOpen);
       }
+      this.startTimeTick();
     }).catch((err: Error) => {
       log.error('settings status failed:', err.message);
       if (!contentArea.isConnected) return;
       contentArea.empty();
       this.renderFirstRun(contentArea, wasAdvancedOpen, err.message);
     });
+  }
+
+  /** Tick every 30 s — updates [data-last-indexed] spans in-place without a full redraw. */
+  private startTimeTick(): void {
+    if (this.tickTimer !== null) window.clearInterval(this.tickTimer);
+    this.tickTimer = window.setInterval(() => {
+      if (!this.containerEl.isConnected) {
+        window.clearInterval(this.tickTimer!);
+        this.tickTimer = null;
+        return;
+      }
+      this.containerEl.querySelectorAll<HTMLElement>('[data-last-indexed]').forEach((el) => {
+        el.setText(timeAgo(el.dataset.lastIndexed ?? ''));
+      });
+    }, 30_000);
   }
 
   private renderFirstRun(container: HTMLElement, wasAdvancedOpen: boolean, errorMsg?: string): void {
@@ -224,7 +260,7 @@ export class QmdSettingTab extends PluginSettingTab {
         new Notice(`QMD: generating embeddings for "${name}"…`);
         await this.plugin.embed();
         new Notice(`QMD: vault registered as "${name}" ✓`);
-        this.display();
+        this.refreshStatusArea();
       } catch (err) {
         new Notice(`QMD: registration failed — ${(err as Error).message}`);
         if (indexBtn.isConnected) {
@@ -260,10 +296,9 @@ export class QmdSettingTab extends PluginSettingTab {
     } else {
       cardHeader.createEl('strong', { text: 'Index healthy' });
       if (lastIndexed) {
-        cardHeader.createEl('span', {
-          cls: 'qmd-health-meta',
-          text: `Last indexed ${lastIndexed}`,
-        });
+        const timeEl = cardHeader.createEl('span', { cls: 'qmd-health-meta' });
+        timeEl.dataset.lastIndexed = lastIndexed;
+        timeEl.setText(`Last indexed ${timeAgo(lastIndexed)}`);
       }
     }
 
@@ -275,7 +310,7 @@ export class QmdSettingTab extends PluginSettingTab {
         embedCta.disabled = true;
         embedCta.textContent = '⏳ Embedding…';
         await this.plugin.embed();
-        if (embedCta.isConnected) this.display();
+        if (embedCta.isConnected) this.refreshStatusArea();
       });
       const reindexBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
       reindexBtn.setAttribute('title', 'Refresh the text index (fast). Run before generating embeddings.');
@@ -283,7 +318,7 @@ export class QmdSettingTab extends PluginSettingTab {
         reindexBtn.disabled = true;
         reindexBtn.textContent = '⏳ Indexing…';
         await this.plugin.reindex();
-        if (reindexBtn.isConnected) this.display();
+        if (reindexBtn.isConnected) this.refreshStatusArea();
       });
     } else {
       const reindexCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
@@ -292,7 +327,7 @@ export class QmdSettingTab extends PluginSettingTab {
         reindexCardBtn.disabled = true;
         reindexCardBtn.textContent = '⏳ Indexing…';
         await this.plugin.reindex();
-        if (reindexCardBtn.isConnected) this.display();
+        if (reindexCardBtn.isConnected) this.refreshStatusArea();
       });
       const embedCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '✨ Generate embeddings' });
       embedCardBtn.setAttribute('title', 'Run qmd embed — generates vector embeddings for semantic/hybrid search.');
@@ -300,7 +335,7 @@ export class QmdSettingTab extends PluginSettingTab {
         embedCardBtn.disabled = true;
         embedCardBtn.textContent = '⏳ Embedding…';
         await this.plugin.embed();
-        if (embedCardBtn.isConnected) this.display();
+        if (embedCardBtn.isConnected) this.refreshStatusArea();
       });
     }
 
@@ -344,7 +379,7 @@ export class QmdSettingTab extends PluginSettingTab {
           );
         });
         new Notice(`QMD: "${name}" registered ✓`);
-        this.display();
+        this.refreshStatusArea();
       } catch (err) {
         new Notice(`QMD: failed — ${(err as Error).message}`);
       }
@@ -357,7 +392,9 @@ export class QmdSettingTab extends PluginSettingTab {
       row.createEl('span', { cls: 'qmd-col-name', text: col.name });
       row.createEl('span', { cls: 'qmd-col-docs qmd-muted', text: `${col.docCount.toLocaleString()} docs` });
       if (col.lastIndexed) {
-        row.createEl('span', { cls: 'qmd-col-time qmd-muted', text: col.lastIndexed });
+        const colTimeEl = row.createEl('span', { cls: 'qmd-col-time qmd-muted' });
+        colTimeEl.dataset.lastIndexed = col.lastIndexed;
+        colTimeEl.setText(timeAgo(col.lastIndexed));
       }
       const menuBtn = row.createEl('button', { cls: 'qmd-col-menu', text: '⋯' });
       menuBtn.addEventListener('click', (e: MouseEvent) => {
@@ -366,14 +403,14 @@ export class QmdSettingTab extends PluginSettingTab {
           item.setTitle('Re-index').setIcon('refresh-cw').onClick(async () => {
             new Notice(`QMD: re-indexing "${col.name}"…`);
             await this.plugin.reindex();
-            this.display();
+            this.refreshStatusArea();
           });
         });
         menu.addItem((item) => {
           item.setTitle('Generate embeddings').setIcon('cpu').onClick(async () => {
             new Notice(`QMD: generating embeddings for "${col.name}"…`);
             await this.plugin.embed();
-            this.display();
+            this.refreshStatusArea();
           });
         });
         menu.addSeparator();
@@ -390,7 +427,7 @@ export class QmdSettingTab extends PluginSettingTab {
                 );
               });
               new Notice(`QMD: removed "${col.name}" ✓`);
-              this.display();
+              this.refreshStatusArea();
             } catch (err) {
               new Notice(`QMD: remove failed — ${(err as Error).message}`);
             }
@@ -570,7 +607,7 @@ export class QmdSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.transportMode = value as 'cli' | 'mcp-http';
             await this.plugin.saveSettings();
-            this.display();
+            this.refreshStatusArea();
           });
       });
 
