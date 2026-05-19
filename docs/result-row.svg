@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 420" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">
+  <rect x="1" y="1" width="878" height="418" rx="10" fill="#fafafa" stroke="#d4d4d8" stroke-width="1"></rect>
+
+  <text x="32" y="40" fill="#18181b" font-size="16" font-weight="600">Result row — anatomy</text>
+  <text x="32" y="62" fill="#52525b" font-size="12">All measurements in CSS pixels at default Obsidian zoom. Map every color to an Obsidian CSS variable, not the hex shown.</text>
+
+  
+  <g transform="translate(80, 180)">
+    <rect x="0" y="0" width="720" height="106" fill="#2a2138" stroke="#4c2c8a" stroke-width="1"></rect>
+
+    
+    <rect x="16" y="14" width="28" height="28" rx="6" fill="#27272a" stroke="#3f3f46"></rect>
+    <text x="30" y="33" fill="#d4d4d8" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace" font-weight="600" text-anchor="middle">01</text>
+
+    
+    <text x="60" y="29" fill="#e4e4e7" font-size="13.5" font-weight="500">OPNsense Prometheus exporter</text>
+    <text x="60" y="46" fill="#71717a" font-size="11.5" font-family="ui-monospace, Menlo, Consolas, monospace">services/observability/opnsense.qmd</text>
+
+    
+    <text x="60" y="72" fill="#a1a1aa" font-size="12">OPNsense</text>
+    <rect x="124" y="60" width="92" height="15" rx="2" fill="#4c2c8a" opacity="0.5"></rect>
+    <text x="170" y="72" fill="#ddd6fe" font-size="12" text-anchor="middle">os-prometheus</text>
+    <text x="222" y="72" fill="#a1a1aa" font-size="12">plugin on gateway. Scraped by</text>
+    <rect x="404" y="60" width="92" height="15" rx="2" fill="#4c2c8a" opacity="0.5"></rect>
+    <text x="450" y="72" fill="#ddd6fe" font-size="12" text-anchor="middle">Grafana Alloy</text>
+    <text x="504" y="72" fill="#a1a1aa" font-size="12">. Configure</text>
+    
+    <text x="60" y="90" fill="#a1a1aa" font-size="12">alert rules for incoming traffic via the webhook listener…</text>
+
+    
+    <text x="700" y="29" fill="#a1a1aa" font-size="11" font-family="ui-monospace, Menlo, Consolas, monospace" text-anchor="end">92%</text>
+    <g transform="translate(670, 36)">
+      <rect x="0" y="0" width="3" height="8" fill="#a78bfa"></rect>
+      <rect x="6" y="0" width="3" height="8" fill="#a78bfa"></rect>
+      <rect x="12" y="0" width="3" height="8" fill="#a78bfa"></rect>
+      <rect x="18" y="0" width="3" height="8" fill="#a78bfa"></rect>
+      <rect x="24" y="0" width="3" height="8" fill="#3f3f46"></rect>
+    </g>
+    <text x="700" y="62" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace" text-anchor="end">05/06/26</text>
+  </g>
+
+  
+  <line x1="110" y1="200" x2="60" y2="120" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="60" y="110" fill="#18181b" font-size="11.5" font-weight="500">Rank badge</text>
+  <text x="60" y="124" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace">28×28 · radius 6 · mono</text>
+
+  <line x1="180" y1="208" x2="200" y2="120" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="200" y="110" fill="#18181b" font-size="11.5" font-weight="500">Title</text>
+  <text x="200" y="124" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace">13.5px / 500 · --text-normal</text>
+
+  <line x1="200" y1="226" x2="400" y2="120" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="400" y="110" fill="#18181b" font-size="11.5" font-weight="500">Path breadcrumb</text>
+  <text x="400" y="124" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace">mono 11.5px · --text-faint</text>
+
+  <line x1="270" y1="252" x2="580" y2="120" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="580" y="110" fill="#18181b" font-size="11.5" font-weight="500">Snippet · 2 lines</text>
+  <text x="580" y="124" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace">&lt;mark&gt; uses accent @ 28%</text>
+
+  <line x1="765" y1="216" x2="780" y2="120" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="800" y="110" fill="#18181b" font-size="11.5" font-weight="500" text-anchor="end">Score</text>
+  <text x="800" y="124" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace" text-anchor="end">% + 5-bar indicator</text>
+
+  <line x1="765" y1="240" x2="780" y2="324" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="800" y="338" fill="#18181b" font-size="11.5" font-weight="500" text-anchor="end">Last modified</text>
+  <text x="800" y="352" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace" text-anchor="end">mono 10.5 · --text-faint</text>
+
+  <line x1="60" y1="270" x2="60" y2="324" stroke="#a78bfa" stroke-width="1" fill="none"></line>
+  <text x="60" y="338" fill="#18181b" font-size="11.5" font-weight="500">Focused row bg</text>
+  <text x="60" y="352" fill="#71717a" font-size="10.5" font-family="ui-monospace, Menlo, Consolas, monospace">--interactive-accent @ 16%</text>
+</svg>
