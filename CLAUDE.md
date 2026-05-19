@@ -69,9 +69,42 @@ Electron's renderer process strips the user's shell PATH. Two functions work tog
 
 ### Releases
 
-Two workflows handle releases:
+One workflow handles releases:
 
-- **`ship.yml`** (`workflow_dispatch`) — the primary release path. Go to GitHub → Actions → Ship Release → Run workflow → pick `patch` / `minor` / `major`. The workflow bumps `manifest.json` and `versions.json`, commits to `main`, and pushes a `v*` tag. The tag push triggers `release.yml`.
-- **`release.yml`** (on `push: tags: v*`) — builds the plugin, packages a zip, and creates the GitHub release with all assets attached. Also fires if a tag is pushed manually from a local machine.
+- **`ship.yml`** (`workflow_dispatch`) — the only release path. Go to GitHub → Actions → Ship Release → Run workflow → pick `patch` / `minor` / `major`. Bumps `manifest.json` and `versions.json`, commits, tags, and publishes the GitHub release in one run.
 
-To release from anywhere (phone, web, local): use the Ship Release workflow dispatch.
+`release.yml` was deleted (PR #51) — it was a duplicate that would have fired a second time on the same tag.
+
+---
+
+## Known gotchas
+
+### SQLite native addon ABI mismatch
+
+`qmd` uses `better-sqlite3` (a compiled native Node.js addon) and `sqlite-vec` (a native SQLite extension). Neither ships prebuilds — both are compiled at `npm install` time against the Node.js ABI (NODE_MODULE_VERSION) in effect on the machine at that moment.
+
+**How it breaks:** `qmd` runs as a subprocess spawned by the plugin via `execFile`. The host shell PATH (resolved by `initShellContext`/`buildEnv`) determines which `node` binary runs the `qmd` script. If the user later updates Node.js (via nvm, system package manager, asdf, etc.), the previously compiled `.node` file is now an ABI mismatch. `qmd` will fail with an error like:
+
+```
+Error: The module '.../better_sqlite3.node' was compiled against a different Node.js version
+using NODE_MODULE_VERSION X. This version requires NODE_MODULE_VERSION Y.
+```
+
+This error is swallowed by the plugin's `execFile` error handler and surfaces as "qmd not found" or a silent empty result.
+
+**Fix:** Rebuild or reinstall qmd after any Node.js version change:
+
+```bash
+npm install -g @tobilu/qmd   # reinstall (recompiles native addons against current Node)
+# or if the version is already correct:
+npm rebuild -g better-sqlite3
+```
+
+**Electron note:** Obsidian is an Electron app, but `qmd` runs outside Electron's process — it uses the host Node runtime, not Electron's bundled one. If someone were to ever load `better-sqlite3` directly inside the plugin (not as a subprocess), they would need to compile it against Electron's Node ABI using `electron-rebuild`. Currently the plugin does not do this.
+
+**nvm users:** The most common trigger is switching nvm default versions. Pin the Node version used at install time or rebuild after switching:
+
+```bash
+nvm use <version-used-to-install-qmd>
+npm install -g @tobilu/qmd
+```

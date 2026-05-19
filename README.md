@@ -173,6 +173,14 @@ Install [BRAT](https://obsidian.md/plugins?id=obsidian42-brat), then add this re
 
 **MCP daemon fails to start** — Switch to CLI mode, or run `qmd mcp --http` in a terminal to see the error output directly.
 
+**`qmd` silently fails or crashes after a Node.js update** — `qmd` uses `better-sqlite3`, a native Node.js addon compiled at install time. If you update Node.js (via nvm, asdf, or a system package manager), the compiled addon becomes an ABI mismatch. Reinstall `qmd` to recompile against the current Node version:
+
+```bash
+npm install -g @tobilu/qmd
+```
+
+If you use nvm and switch versions frequently, reinstall `qmd` after each switch, or pin a stable version with an `.nvmrc`.
+
 ---
 
 ## Development
