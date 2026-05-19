@@ -203,19 +203,25 @@
 }
 
 /* ── Search modal ─────────────────────────────────────────── */
-/* Anchor at 15vh — matches Quick Switcher; never vertically centered (#8) */
+/*
+ * Anchor at 15vh from the top — matches Quick Switcher feel.
+ * align-self + margin-top repositions the modal BOX within modal-container's
+ * centering flex context. Using padding-top on .modal instead creates an empty
+ * void inside an otherwise-centered box, pushing input to the bottom half.
+ */
 .qmd-search-modal.modal {
-  align-items: flex-start;
-  padding-top: 15vh;
+  align-self: flex-start;
+  margin-top: 15vh;
+  padding: 0;
+  width: min(760px, 90vw);
+  min-width: 420px;
+  max-width: min(760px, 90vw);
 }
 
 .qmd-search-modal .modal-content {
   padding: 0;
   display: flex;
   flex-direction: column;
-  width: min(760px, 90vw);
-  min-width: 420px;
-  max-width: min(760px, 90vw);
   overflow: hidden;
 }
 
@@ -344,7 +350,6 @@
 
 /* Results list */
 .qmd-results {
-  flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
