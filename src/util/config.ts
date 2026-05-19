@@ -36,7 +36,7 @@ export function loadCollectionNames(): string[] {
     return [];
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
-      console.warn('[obsidian-qmd] Could not parse index.yml:', err);
+      console.warn('[obsidian-qmd-search] Could not parse index.yml:', err);
     }
     return [];
   }
