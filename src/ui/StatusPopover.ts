@@ -49,11 +49,18 @@ export class StatusPopover {
     // Footer
     const footer = el.createDiv({ cls: 'qmd-popover-footer' });
     const reindexBtn = footer.createEl('button', { cls: 'qmd-popover-btn mod-cta', text: 'Re-index' });
+    reindexBtn.setAttribute('title', 'Update the text index (qmd update) — run after adding or editing notes');
     reindexBtn.addEventListener('click', () => {
       this.close();
       this.plugin.reindex();
     });
-    const settingsBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: 'Open settings' });
+    const embedBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: 'Embed' });
+    embedBtn.setAttribute('title', 'Generate vector embeddings (qmd embed) — run after re-indexing to enable semantic search');
+    embedBtn.addEventListener('click', () => {
+      this.close();
+      this.plugin.embed();
+    });
+    const settingsBtn = footer.createEl('button', { cls: 'qmd-popover-btn', text: 'Settings' });
     settingsBtn.addEventListener('click', () => {
       this.close();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

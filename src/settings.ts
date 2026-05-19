@@ -273,6 +273,14 @@ export class QmdSettingTab extends PluginSettingTab {
     void dot;
     cardHeader.createEl('strong', { text: 'Index healthy' });
 
+    const cardActions = card.createDiv({ cls: 'qmd-health-card-actions' });
+    const reindexCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '↻ Re-index' });
+    reindexCardBtn.setAttribute('title', 'Run qmd update — refreshes the text index after adding or editing notes. Fast.');
+    reindexCardBtn.addEventListener('click', () => { void this.plugin.reindex(); });
+    const embedCardBtn = cardActions.createEl('button', { cls: 'qmd-health-action-btn', text: '⟳ Embed' });
+    embedCardBtn.setAttribute('title', 'Run qmd embed — generates vector embeddings for semantic/hybrid search. Run after re-indexing.');
+    embedCardBtn.addEventListener('click', () => { void this.plugin.embed(); });
+
     const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
     const totalVectors = status.totalVectors ?? 0;
     const lastIndexed = status.collections[0]?.lastIndexed;
@@ -340,9 +348,16 @@ export class QmdSettingTab extends PluginSettingTab {
       menuBtn.addEventListener('click', (e: MouseEvent) => {
         const menu = new Menu();
         menu.addItem((item) => {
-          item.setTitle('Re-index').onClick(async () => {
+          item.setTitle('Re-index').setIcon('refresh-cw').onClick(async () => {
             new Notice(`QMD: re-indexing "${col.name}"…`);
             await this.plugin.reindex();
+            this.display();
+          });
+        });
+        menu.addItem((item) => {
+          item.setTitle('Generate embeddings').setIcon('cpu').onClick(async () => {
+            new Notice(`QMD: generating embeddings for "${col.name}"…`);
+            await this.plugin.embed();
             this.display();
           });
         });

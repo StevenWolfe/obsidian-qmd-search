@@ -823,6 +823,29 @@
   font-family: var(--font-monospace);
 }
 
+.qmd-health-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.qmd-health-action-btn {
+  padding: 4px 12px;
+  font-size: 0.82em;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.qmd-health-action-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
 /* Settings sections */
 .qmd-settings-section {
   margin-bottom: 20px;
