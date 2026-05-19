@@ -36,6 +36,8 @@ jobs:
       - run: npm ci
 
       # ── Bump version ───────────────────────────────────────────────────────
+      # Source of truth: manifest.json. package.json version is pinned to
+      # 0.0.0 and intentionally not bumped — this plugin is not published to npm.
       - name: Bump version numbers
         id: bump
         run: |
@@ -83,6 +85,8 @@ jobs:
 
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Clean up any stale release branch from a prior failed run
+          git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
           git add manifest.json versions.json
           git commit -m "chore: release v${VERSION}"
