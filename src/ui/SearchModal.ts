@@ -287,20 +287,11 @@ export class SearchModal extends Modal {
     this.resultItems = [];
     const searchingEl = this.resultsEl.createEl('p', { cls: 'qmd-searching', text: 'Searching…' });
 
-    // After 1.5 s with no result, hint that this is a cold start
-    const isFirstSearch = !this.plugin.modelLoaded;
-    const slowTimer = isFirstSearch
-      ? window.setTimeout(() => {
-          if (gen === this.searchGeneration && searchingEl.isConnected) {
-            searchingEl.setText('Starting up… (first search may take a moment)');
-          }
-        }, 1500)
-      : null;
-
     const t0 = Date.now();
     let results: QmdResult[] | null = null;
     let searchError: Error | null = null;
     let usedFallback = false;
+    let isLiteResult = false;
 
     // Coerce to keyword if embeddings not available (#10)
     const effectiveMode: SearchMode =
@@ -315,6 +306,31 @@ export class SearchModal extends Modal {
       minScore: this.settings.minScore ?? undefined,
     };
 
+    // --- Search Ahead / Lite Fallback ---
+    // If enabled and we're doing a potentially slow search, fire keyword first.
+    const useSearchAhead = this.settings.searchAhead && effectiveMode !== 'keyword';
+    let keywordPromise: Promise<QmdResult[]> | null = null;
+
+    if (useSearchAhead) {
+      keywordPromise = this.client.search({ query, mode: 'keyword', ...searchOpts });
+      keywordPromise.then((kwResults) => {
+        if (gen === this.searchGeneration && !results && kwResults.length > 0) {
+          isLiteResult = true;
+          this.renderResults(kwResults, Date.now() - t0, true);
+        }
+      }).catch(() => { /* ignore keyword failure in search-ahead mode */ });
+    }
+
+    // After 1.5 s with no result, hint that this is a cold start
+    const isFirstSearch = !this.plugin.modelLoaded;
+    const slowTimer = isFirstSearch
+      ? window.setTimeout(() => {
+          if (gen === this.searchGeneration && searchingEl.isConnected && !results) {
+            searchingEl.setText('Starting up… (first search may take a moment)');
+          }
+        }, 1500)
+      : null;
+
     try {
       results = await this.client.search({ query, mode: effectiveMode, ...searchOpts });
       this.plugin.modelLoaded = true;
@@ -326,7 +342,7 @@ export class SearchModal extends Modal {
       if (effectiveMode !== 'keyword' && gen === this.searchGeneration) {
         log.warn('falling back to keyword search');
         try {
-          results = await this.client.search({ query, mode: 'keyword', ...searchOpts });
+          results = await (keywordPromise ?? this.client.search({ query, mode: 'keyword', ...searchOpts }));
           usedFallback = true;
           searchError = null;
         } catch (fallbackErr) {
@@ -346,29 +362,40 @@ export class SearchModal extends Modal {
     }
 
     const ms = Date.now() - t0;
-    this.resultsEl.empty();
-
     if (searchError) {
+      this.resultsEl.empty();
       this.statusLine.setText('');
       this.resultsEl.createEl('p', { cls: 'qmd-error', text: searchError.message });
       return;
     }
 
-    if (!results || results.length === 0) {
+    this.renderResults(results ?? [], ms, false);
+
+    // Record query and report to plugin for status bar
+    if (!isLiteResult) {
+      this.plugin.addRecentQuery(query);
+      this.plugin.reportSearchResult(results?.length ?? 0, ms);
+    }
+  }
+
+  private renderResults(results: QmdResult[], ms: number, isLite: boolean): void {
+    this.resultsEl.empty();
+    this.focusedIndex = -1;
+    this.resultItems = [];
+
+    if (results.length === 0) {
       this.statusLine.setText('0 results');
       this.resultsEl.createEl('p', { cls: 'qmd-no-results', text: 'No results.' });
       return;
     }
 
-    this.statusLine.setText(`${results.length} results · ${ms} ms`);
-
-    // Record query and report to plugin for status bar
-    this.plugin.addRecentQuery(query);
-    this.plugin.reportSearchResult(results.length, ms);
+    const modeLabel = isLite ? ' (instant)' : '';
+    this.statusLine.setText(`${results.length} results · ${ms} ms${modeLabel}`);
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const item = this.buildResultItem(result, i + 1);
+      if (isLite) item.addClass('qmd-result-item--lite');
       this.resultsEl.appendChild(item);
       this.resultItems.push(item);
     }
