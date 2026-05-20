@@ -1048,16 +1048,39 @@
   font-size: 1.25em;
   line-height: 1;
   flex-shrink: 0;
+  align-self: center;
+}
+
+.qmd-col-primary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.qmd-col-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .qmd-col-name {
-  flex: 1;
   font-weight: 500;
   color: var(--text-normal);
-  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.qmd-col-path {
+  font-size: 0.78em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
 }
 
 .qmd-col-docs {
