@@ -882,3 +882,108 @@ pre .v { color: oklch(0.82 0.12 75); }   /* variable */
 }
 .docs section h2:hover a.anchor,
 .docs section h3:hover a.anchor { opacity: 1; }
+
+/* ── Changelog page ─────────────────────────────────────────────────────── */
+
+.cl-head {
+  padding: 56px 0 32px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 40px;
+}
+.cl-head h1 {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 8px 0 0;
+}
+.cl-lead {
+  color: var(--ink-2);
+  font-size: 15px;
+  margin: 10px 0 0;
+}
+.cl-lead a { color: var(--muted); text-underline-offset: 3px; }
+.cl-lead a:hover { color: var(--accent); }
+
+.changelog {
+  padding-bottom: 80px;
+  max-width: 720px;
+}
+
+/* Version headings — H1 (minor/major from semantic-release) and
+   H2 (patch from semantic-release, all hand-written entries) */
+.changelog h1,
+.changelog h2 {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: var(--accent);
+  margin: 40px 0 10px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.changelog h1:first-child,
+.changelog h2:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.changelog h1 a,
+.changelog h2 a {
+  color: inherit;
+  text-decoration: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+.changelog h1 a:hover,
+.changelog h2 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Section labels: ### Bug Fixes / ### Features */
+.changelog h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin: 20px 0 6px;
+}
+
+.changelog ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.changelog li {
+  font-size: 14.5px;
+  color: var(--ink-2);
+  line-height: 1.65;
+  margin-bottom: 4px;
+}
+.changelog li::marker { color: var(--accent); }
+
+/* Commit hash / PR links inside list items */
+.changelog li a {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--faint);
+}
+.changelog li a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* strong (scope prefix like **ci:**) */
+.changelog strong { color: var(--ink); font-weight: 600; }
+
+/* inline code in list items */
+.changelog li code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--bg-inset);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* hr dividers (hand-written sections) */
+.changelog hr {
+  border: none;
+  border-top: 1px solid var(--line-soft);
+  margin: 24px 0;
+}
