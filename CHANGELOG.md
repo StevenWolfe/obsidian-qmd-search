@@ -1,3 +1,11 @@
+## [0.12.11](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.10...0.12.11) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** guard against automated-release-triggered loops in ship workflow\n\nSkip ship workflow early if last commit looks like an automated release bump (prevents repeated PR/merge loops).\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> ([ed28172](https://github.com/StevenWolfe/obsidian-qmd-search/commit/ed2817245dee53e60fa1c3f26d1a09d4e64ef3d8))
+* **settings:** eliminate status flash, fix macOS icons, show collection path ([24fcd7b](https://github.com/StevenWolfe/obsidian-qmd-search/commit/24fcd7b220eb7364a224652ba7bb5eb86f3ad872)), closes [#99](https://github.com/StevenWolfe/obsidian-qmd-search/issues/99)
+
 # Changelog
 
 All notable changes to QMD Search are documented here. Versions follow [Semantic Versioning](https://semver.org/). Release artifacts are on the [GitHub releases page](../../releases).
