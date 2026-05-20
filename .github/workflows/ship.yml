@@ -110,8 +110,13 @@ jobs:
           # Clean up any stale release branch from a prior failed run
           git push origin --delete "$BRANCH" 2>/dev/null || true
           git checkout -b "$BRANCH"
-          git add manifest.json versions.json
-          git commit -m "chore: release v${VERSION}"
+          git add manifest.json versions.json || true
+          # Only commit if there are staged changes (avoid failing when nothing changed)
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: release v${VERSION}"
+          fi
           git push origin "$BRANCH"
 
           SHA=$(git rev-parse HEAD)
