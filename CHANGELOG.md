@@ -1,3 +1,9 @@
+## [0.14.1](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.14.0...0.14.1) (2026-05-20)
+
+### Bug Fixes
+
+* Docs link opens in browser at versioned URL, strip @@ snippet prefix ([#109](https://github.com/StevenWolfe/obsidian-qmd-search/issues/109), [#194](https://github.com/StevenWolfe/obsidian-qmd-search/issues/194)) ([c702ac4](https://github.com/StevenWolfe/obsidian-qmd-search/commit/c702ac44f9aa26be9ee6f8aa1fd5b96e2e511df7))
+
 ## [0.14.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.13.1...0.14.0) (2026-05-20)
 
 ### Features
