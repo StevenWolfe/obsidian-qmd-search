@@ -1,0 +1,26 @@
+---
+// Versioned docs route: /docs/<version>
+// All versions currently redirect to /docs (same content for every release).
+// When version-specific docs are needed, add conditional content here
+// keyed on `version` from Astro.params.
+import versionsJson from '../../../../versions.json';
+
+export function getStaticPaths() {
+  return Object.keys(versionsJson).map((version) => ({ params: { version } }));
+}
+
+const { version } = Astro.params;
+const base = import.meta.env.BASE_URL;
+const docsUrl = `${base}/docs`;
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="refresh" content={`0; url=${docsUrl}`} />
+  <title>QMD Search {version} · Docs</title>
+</head>
+<body>
+  <p>Redirecting to <a href={docsUrl}>current docs</a>…</p>
+</body>
+</html>

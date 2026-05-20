@@ -82,7 +82,9 @@ export class QmdSettingTab extends PluginSettingTab {
     const docsLink = headerMeta.createEl('a', { cls: 'qmd-docs-link', text: 'Docs ↗' });
     docsLink.addEventListener('click', (e) => {
       e.preventDefault();
-      window.open('https://stevenwolfe.github.io/obsidian-qmd-search/', '_blank');
+      const version = this.plugin.manifest.version;
+      const { shell } = require('electron') as typeof import('electron');
+      void shell.openExternal(`https://stevenwolfe.github.io/obsidian-qmd-search/docs/${version}`);
     });
     headerMeta.createSpan({ text: ' · ' });
     const binaryPill = headerMeta.createSpan({ cls: 'qmd-binary-pill qmd-binary-pill--checking', text: 'checking…' });
