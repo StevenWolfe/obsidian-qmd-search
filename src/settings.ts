@@ -545,7 +545,7 @@ export class QmdSettingTab extends PluginSettingTab {
         if (e.key === 'Enter') void save();
         else if (e.key === 'Escape') cancel();
       });
-      setTimeout(() => editEl?.focus(), 50);
+      window.setTimeout(() => editEl?.focus(), 50);
     });
 
     // Insert chip row into the setting control area
@@ -764,7 +764,7 @@ export class CollectionNameModal extends Modal {
       if (e.key === 'Enter') submit();
       else if (e.key === 'Escape') cancel();
     });
-    setTimeout(() => { input.focus(); input.select(); }, 50);
+    window.setTimeout(() => { input.focus(); input.select(); }, 50);
   }
 
   onClose(): void {
