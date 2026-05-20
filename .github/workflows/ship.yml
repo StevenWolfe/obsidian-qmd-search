@@ -27,15 +27,21 @@ on:
         default: patch
         type: choice
         options: [patch, minor, major]
+  # Disable push trigger to prevent accidental runs from branches,
+  # but allow it on main if absolutely needed (though ship is intended for dispatch).
+  push:
+    branches: [main]
 
 jobs:
   ci:
     name: CI gate
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/ci.yml
 
   ship:
     name: Bump, build, and release
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     needs: [ci]
     permissions:
       contents: write
@@ -45,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT || github.token }}
 
       - uses: actions/setup-node@v6
         with:
@@ -98,7 +104,7 @@ jobs:
       - name: Commit and open PR
         id: pr
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
         run: |
           VERSION="${{ steps.bump.outputs.version }}"
           BRANCH="chore/release-v${VERSION}"
@@ -128,7 +134,7 @@ jobs:
       - name: Satisfy required status checks
         if: ${{ !secrets.GH_PAT }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           SHA="${{ steps.pr.outputs.sha }}"
           REPO="${{ github.repository }}"
@@ -142,7 +148,7 @@ jobs:
 
       - name: Enable auto-merge and wait
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
         run: |
           BRANCH="${{ steps.pr.outputs.branch }}"
           gh pr merge "$BRANCH" --auto --merge --delete-branch
@@ -157,7 +163,7 @@ jobs:
 
       - name: Tag release
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
         run: |
           VERSION="${{ steps.bump.outputs.version }}"
           git fetch origin main
@@ -174,7 +180,7 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT || github.token }}
           tag_name: ${{ steps.bump.outputs.version }}
           name: ${{ steps.bump.outputs.version }}
           files: |
