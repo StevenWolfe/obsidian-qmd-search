@@ -1,3 +1,10 @@
+## [0.14.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.13.1...0.14.0) (2026-05-20)
+
+### Features
+
+* **docs:** add /changelog page rendered from CHANGELOG.md ([fbba291](https://github.com/StevenWolfe/obsidian-qmd-search/commit/fbba291cb715d11f4953376cf4325efeeb1b8359))
+* **release:** suppress fix(ci)/fix(docs) releases, hide internal types from notes ([580d362](https://github.com/StevenWolfe/obsidian-qmd-search/commit/580d362307d58bcd695383b6b8a104957aa0dbf3))
+
 ## [0.13.1](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.13.0...0.13.1) (2026-05-20)
 
 
