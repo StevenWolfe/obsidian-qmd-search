@@ -5,15 +5,22 @@ export async function navigateToResult(app: App, result: QmdResult): Promise<voi
   // result.path is relative to the collection root (e.g. "notes/file.md").
   // Normalise separators and case for Linux (case-sensitive FS) before matching.
   const normalise = (p: string) => p.replace(/\\/g, '/').toLowerCase();
+  const slugify = (p: string) => p.replace(/ /g, '-');
   const pathNorm = normalise(result.path);
   const _absFile = app.vault.getAbstractFileByPath(result.path);
   const file =
     (_absFile instanceof TFile ? _absFile : null) ??
     app.vault.getMarkdownFiles().find((f) => {
       const fp = normalise(f.path);
+      const fpSlug = slugify(fp);
+      const baseName = f.basename.toLowerCase();
+      const qmdBase = pathNorm.replace(/\.md$/, '');
       return fp === pathNorm ||
+        fpSlug === pathNorm ||
         fp.endsWith('/' + pathNorm) ||
-        f.basename.toLowerCase() === pathNorm.replace(/\.md$/, '');
+        fpSlug.endsWith('/' + pathNorm) ||
+        baseName === qmdBase ||
+        slugify(baseName) === qmdBase;
     }) ??
     null;
 
