@@ -74,8 +74,8 @@ export async function waitForEndpoint(
     if (await tcpReachable(port, signal)) return;
     if (signal.aborted) return;
     await new Promise<void>((r) => {
-      const t = setTimeout(r, intervalMs);
-      signal.addEventListener('abort', () => { clearTimeout(t); r(); }, { once: true });
+      const t = window.setTimeout(r, intervalMs);
+      signal.addEventListener('abort', () => { window.clearTimeout(t); r(); }, { once: true });
     });
   }
 

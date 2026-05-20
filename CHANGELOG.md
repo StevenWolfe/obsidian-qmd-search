@@ -1,3 +1,10 @@
+## [0.12.12](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.11...0.12.12) (2026-05-20)
+
+
+### Bug Fixes
+
+* **lint:** resolve eslint-plugin-obsidianmd 0.3.0 errors ([8986294](https://github.com/StevenWolfe/obsidian-qmd-search/commit/898629451be5c3103174e475bf8819b812ba9607))
+
 ## [0.12.11](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.10...0.12.11) (2026-05-20)
 
 

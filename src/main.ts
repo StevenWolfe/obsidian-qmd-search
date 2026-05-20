@@ -48,7 +48,7 @@ export default class QmdSearchPlugin extends Plugin {
     this.statusBarItem.addEventListener('click', () => this.handleStatusBarClick());
 
     // Initial status bar population after a short delay (client may be warming up)
-    setTimeout(() => this.refreshStatusBar(), 3000);
+    window.setTimeout(() => this.refreshStatusBar(), 3000);
     this.registerInterval(window.setInterval(() => this.refreshStatusBar(), STATUS_REFRESH_INTERVAL_MS));
 
     // Auto-reindex: watch for markdown file changes and debounce a re-index run
@@ -78,7 +78,7 @@ export default class QmdSearchPlugin extends Plugin {
     this.addSettingTab(new QmdSettingTab(this.app, this));
 
     // Show onboarding after Obsidian has fully loaded
-    setTimeout(() => {
+    window.setTimeout(() => {
       if (!this.settings.onboardingDone) {
         new OnboardingModal(this.app, this).open();
       } else if (this.settings.prewarmOnLaunch && this.settings.transportMode === 'mcp-http') {

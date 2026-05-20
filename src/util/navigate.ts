@@ -1,4 +1,4 @@
-import { App, MarkdownView, Notice } from 'obsidian';
+import { App, MarkdownView, Notice, TFile } from 'obsidian';
 import type { QmdResult } from '../client/types';
 
 export async function navigateToResult(app: App, result: QmdResult): Promise<void> {
@@ -6,8 +6,9 @@ export async function navigateToResult(app: App, result: QmdResult): Promise<voi
   // Normalise separators and case for Linux (case-sensitive FS) before matching.
   const normalise = (p: string) => p.replace(/\\/g, '/').toLowerCase();
   const pathNorm = normalise(result.path);
+  const _absFile = app.vault.getAbstractFileByPath(result.path);
   const file =
-    app.vault.getFileByPath(result.path) ??
+    (_absFile instanceof TFile ? _absFile : null) ??
     app.vault.getMarkdownFiles().find((f) => {
       const fp = normalise(f.path);
       return fp === pathNorm ||
