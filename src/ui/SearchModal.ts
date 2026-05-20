@@ -1,6 +1,6 @@
 const path = require('path') as typeof import('path');
 
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, TFile, sanitizeHTMLToDom } from 'obsidian';
 import type { QmdClient } from '../client/base';
 import type { QmdSearchSettings } from '../settings';
 import type { QmdResult, SearchMode } from '../client/types';
@@ -428,7 +428,7 @@ export class SearchModal extends Modal {
       const snippetEl = content.createEl('p', { cls: 'qmd-result-snippet' });
       const hasMarkTags = /<mark>/i.test(result.snippet);
       if (hasMarkTags) {
-        snippetEl.innerHTML = sanitizeSnippet(result.snippet);
+        snippetEl.appendChild(sanitizeHTMLToDom(sanitizeSnippet(result.snippet)));
       } else {
         snippetEl.setText(result.snippet);
       }
@@ -449,8 +449,9 @@ export class SearchModal extends Modal {
     };
     const openNewTab = async () => {
       const leaf = this.app.workspace.getLeaf('tab');
+      const _absFile = this.app.vault.getAbstractFileByPath(result.path);
       const file =
-        this.app.vault.getFileByPath(result.path) ??
+        (_absFile instanceof TFile ? _absFile : null) ??
         this.app.vault.getMarkdownFiles().find(
           (f) => f.path.endsWith('/' + result.path) || f.basename === result.path.replace(/\.md$/, ''),
         ) ??
