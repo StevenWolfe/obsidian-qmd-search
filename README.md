@@ -54,6 +54,12 @@ flowchart LR
 
 ---
 
+## ⚠️ QMD is 💪, not [<img src="https://cultofthepartyparrot.com/parrots/hd/fastparrot.gif" height="30">]()
+
+Searches are rich and flexible -- but currently often [<img src="https://cultofthepartyparrot.com/parrots/hd/slowparrot.gif" height="24">]()
+
+---
+
 ## Status bar
 
 ![Status bar — five states](docs/status-states.svg)
