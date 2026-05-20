@@ -36,6 +36,8 @@ All `qmd` interaction is behind a `QmdClient` interface (`src/client/base.ts`). 
 
 `qmd --json` returns a bare array of `RawQmdResult` where the file field is a URI like `qmd://collection-name/relative/path.md`. `normalizeResult()` in `src/client/types.ts` splits this into `collection` and `path` fields used throughout the UI.
 
+**qmd path contract — `handelize()`**: qmd transforms every file path through `handelize()` before storing it in the index (see `@tobilu/qmd dist/store.js`). The transform: lowercase the whole path, then per segment replace any run of non-alphanumeric, non-`$` characters (spaces, parens, dots in directory names, etc.) with a single hyphen, strip leading/trailing hyphens, preserve the file extension unchanged. So `reference/Proxmox Grafana Dashboard.md` → `reference/proxmox-grafana-dashboard.md`. Vault filenames with spaces or punctuation will never match qmd paths by a plain string compare. `navigateToResult()` in `src/util/navigate.ts` applies the same transform to vault paths as a fallback lookup to handle this.
+
 ### Settings (`src/settings.ts`)
 
 `QmdSearchSettings` is persisted via Obsidian's `loadData/saveData`. `saveSettings(rebuildClient)` accepts a boolean to skip client teardown for non-transport changes (e.g. default collection, search flags).
