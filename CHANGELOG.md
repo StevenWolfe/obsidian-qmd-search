@@ -1,3 +1,10 @@
+## [0.13.1](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.13.0...0.13.1) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** restore missing version in actions/checkout@v6 for deploy-docs ([5a42222](https://github.com/StevenWolfe/obsidian-qmd-search/commit/5a422222fe8d5fce3a025279aa2338fae407f17e))
+
 # [0.13.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.13...0.13.0) (2026-05-20)
 
 
