@@ -1,3 +1,10 @@
+## [0.12.13](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.12...0.12.13) (2026-05-20)
+
+
+### Bug Fixes
+
+* **ci:** use GH_PAT for semantic-release to fix 403 on release creation ([579537e](https://github.com/StevenWolfe/obsidian-qmd-search/commit/579537e9e47002f091a7c174029b1de1439c0d0e))
+
 ## [0.12.12](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.11...0.12.12) (2026-05-20)
 
 
