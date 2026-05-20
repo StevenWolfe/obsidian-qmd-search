@@ -12,6 +12,13 @@ import { StatusPopover } from './ui/StatusPopover';
 import { OnboardingModal } from './ui/OnboardingModal';
 import type { PluginStatus } from './client/types';
 import { computeIndexHealth } from './client/types';
+import {
+  setTelemetryEnabled,
+  record,
+  emitVersionSnapshot,
+  maybeEmitIndexSnapshot,
+  emitHardwareSnapshot,
+} from './util/telemetry';
 
 const STATUS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const TRANSIENT_DURATION_MS = 3000;
@@ -40,6 +47,7 @@ export default class QmdSearchPlugin extends Plugin {
     this.resolvedBinaryPath = await initShellContext(this.settings.qmdBinaryPath);
     log.debug('plugin loaded: binary=%s transport=%s', this.resolvedBinaryPath, this.settings.transportMode);
     this.client = this.buildClient();
+    emitVersionSnapshot(this.resolvedBinaryPath, this.manifest.version);
 
     this.statusBarItem = this.addStatusBarItem();
     this.statusBarItem.addClass('qmd-status-bar');
@@ -130,11 +138,13 @@ export default class QmdSearchPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     setLogLevel(this.settings.logLevel);
+    setTelemetryEnabled(this.settings.telemetryEnabled);
   }
 
   async saveSettings(rebuildClient = true): Promise<void> {
     await this.saveData(this.settings);
     setLogLevel(this.settings.logLevel);
+    setTelemetryEnabled(this.settings.telemetryEnabled);
     if (rebuildClient) {
       this.client.dispose().catch(console.error);
       this.resolvedBinaryPath = await initShellContext(this.settings.qmdBinaryPath);
@@ -275,6 +285,9 @@ export default class QmdSearchPlugin extends Plugin {
           health: computeIndexHealth(totalDocs, totalVectors),
         });
 
+        maybeEmitIndexSnapshot(totalDocs, totalVectors, s.collections.length);
+        emitHardwareSnapshot(s.gpuInfo, s.gpuVram, s.gpuDevice);
+
         // Maintenance reminder: if not auto-reindexing and index is older than 24h
         if (!this.settings.autoReindex && lastIndexed) {
           const lastDate = new Date(lastIndexed);
@@ -322,8 +335,10 @@ export default class QmdSearchPlugin extends Plugin {
     const notice = new Notice('QMD: re-indexing collections…', 0);
     this.showOperationInStatusBar('indexing…');
     const args = this.settings.indexName ? ['--index', this.settings.indexName, 'update'] : ['update'];
+    const t0 = Date.now();
     return new Promise((resolve) => {
       execFile(this.resolvedBinaryPath, args, { timeout: 600_000, env: buildEnv() }, (err) => {
+        record({ kind: 'command_timing', command: 'update', transport: 'cli', duration_ms: Date.now() - t0, success: !err });
         notice.hide();
         if (err) new Notice(`QMD: re-index error — ${err.message}`);
         else new Notice('QMD: re-index complete ✓');
@@ -337,8 +352,10 @@ export default class QmdSearchPlugin extends Plugin {
     const notice = new Notice('QMD: generating embeddings…', 0);
     this.showOperationInStatusBar('embedding…');
     const args = this.settings.indexName ? ['--index', this.settings.indexName, 'embed'] : ['embed'];
+    const t0 = Date.now();
     return new Promise((resolve) => {
       execFile(this.resolvedBinaryPath, args, { timeout: 600_000, env: buildEnv() }, (err) => {
+        record({ kind: 'command_timing', command: 'embed', transport: 'cli', duration_ms: Date.now() - t0, success: !err });
         notice.hide();
         if (err) new Notice(`QMD: embed error — ${err.message}`);
         else new Notice('QMD: embeddings complete ✓');

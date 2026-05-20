@@ -32,6 +32,7 @@ export interface QmdSearchSettings {
   reindexDebounceSeconds: number;
   prewarmOnLaunch: boolean;
   searchAhead: boolean;
+  telemetryEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: QmdSearchSettings = {
@@ -51,6 +52,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   reindexDebounceSeconds: 90,
   prewarmOnLaunch: true,
   searchAhead: true,
+  telemetryEnabled: false,
 };
 
 export class QmdSettingTab extends PluginSettingTab {
@@ -490,6 +492,19 @@ export class QmdSettingTab extends PluginSettingTab {
         slider.sliderEl.title = '1s … 5m';
       })
       .settingEl.append(debounceValueEl);
+
+    // Telemetry opt-in
+    new Setting(section)
+      .setName('Usage analytics')
+      .setDesc('Record timing and index stats locally to ~/.cache/qmd/telemetry.jsonl. Opt-in, stored on your machine only, never uploaded.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.telemetryEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.telemetryEnabled = value;
+            await this.plugin.saveSettings(false);
+          }),
+      );
 
     // qmd binary path — read-only chip with Change… button (#6)
     const autoDetected = this.plugin.resolvedBinaryPath !== 'qmd' && this.plugin.settings.qmdBinaryPath === 'qmd';
