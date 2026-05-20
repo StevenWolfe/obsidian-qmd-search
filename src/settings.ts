@@ -127,27 +127,33 @@ export class QmdSettingTab extends PluginSettingTab {
 
     this.plugin.client.status().then((status) => {
       if (!contentArea.isConnected) return;
-      contentArea.empty();
-      contentArea.removeClass('qmd-is-loading');
 
       const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
       const matched = status.collections.find((c) => c.path === vaultPath);
 
+      // Build into a detached element then swap atomically — avoids blank-flash during refresh
+      const renderTarget = document.createElement('div') as HTMLElement;
       if (status.collections.length === 0) {
-        this.renderFirstRun(contentArea, wasAdvancedOpen);
+        this.renderFirstRun(renderTarget, wasAdvancedOpen);
       } else {
         const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
         const totalVectors = status.totalVectors ?? 0;
         const health = computeIndexHealth(totalDocs, totalVectors);
-        this.renderHealthy(contentArea, status, health, wasAdvancedOpen, matched);
+        this.renderHealthy(renderTarget, status, health, wasAdvancedOpen, matched);
       }
+      contentArea.empty();
+      contentArea.removeClass('qmd-is-loading');
+      while (renderTarget.firstChild) contentArea.appendChild(renderTarget.firstChild);
       this.startTimeTick();
     }).catch((err: Error) => {
       log.error('settings status failed:', err.message);
       if (!contentArea.isConnected) return;
+
+      const renderTarget = document.createElement('div') as HTMLElement;
+      this.renderFirstRun(renderTarget, wasAdvancedOpen, err.message);
       contentArea.empty();
       contentArea.removeClass('qmd-is-loading');
-      this.renderFirstRun(contentArea, wasAdvancedOpen, err.message);
+      while (renderTarget.firstChild) contentArea.appendChild(renderTarget.firstChild);
     });
   }
 
@@ -317,7 +323,7 @@ export class QmdSettingTab extends PluginSettingTab {
     const collSection = container.createDiv({ cls: 'qmd-settings-section' });
     const collHeader = collSection.createDiv({ cls: 'qmd-section-header' });
     collHeader.createEl('span', { cls: 'qmd-section-title', text: 'Collections' });
-    const addBtn = collHeader.createEl('button', { cls: 'qmd-section-btn', text: '+ Add collection' });
+    const addBtn = collHeader.createEl('button', { cls: 'qmd-section-btn', text: matched ? '+ Add other vault' : '+ Add collection' });
     addBtn.addEventListener('click', async () => {
       const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
       const vaultName = this.app.vault.getName();
@@ -347,9 +353,15 @@ export class QmdSettingTab extends PluginSettingTab {
       const isMatched = col.name === matched?.name;
       const row = collList.createDiv({ cls: `qmd-collection-row${isMatched ? ' qmd-collection-row--active' : ''}` });
       row.createEl('span', { cls: 'qmd-col-icon', text: '🗄' });
-      row.createEl('span', { cls: 'qmd-col-name', text: col.name });
+      const primary = row.createDiv({ cls: 'qmd-col-primary' });
+      const nameRow = primary.createDiv({ cls: 'qmd-col-name-row' });
+      nameRow.createEl('span', { cls: 'qmd-col-name', text: col.name });
       if (isMatched) {
-        row.createSpan({ cls: 'qmd-col-badge', text: 'Current' });
+        nameRow.createSpan({ cls: 'qmd-col-badge', text: 'Current' });
+      }
+      if (col.path) {
+        const shortPath = col.path.replace(os.homedir(), '~');
+        primary.createEl('span', { cls: 'qmd-col-path qmd-muted', text: shortPath });
       }
       row.createEl('span', { cls: 'qmd-col-docs qmd-muted', text: `${col.docCount.toLocaleString()} docs` });
       if (col.lastIndexed) {
@@ -361,14 +373,14 @@ export class QmdSettingTab extends PluginSettingTab {
       menuBtn.addEventListener('click', (e: MouseEvent) => {
         const menu = new Menu();
         menu.addItem((item) => {
-          item.setTitle('Re-index').setIcon('lucide-refresh-cw').onClick(async () => {
+          item.setTitle('Re-index').setIcon('refresh-cw').onClick(async () => {
             new Notice(`QMD: re-indexing "${col.name}"…`);
             await this.plugin.reindex();
             this.refreshStatusArea();
           });
         });
         menu.addItem((item) => {
-          item.setTitle('Generate embeddings').setIcon('lucide-cpu').onClick(async () => {
+          item.setTitle('Generate embeddings').setIcon('zap').onClick(async () => {
             new Notice(`QMD: generating embeddings for "${col.name}"…`);
             await this.plugin.embed();
             this.refreshStatusArea();
@@ -376,7 +388,7 @@ export class QmdSettingTab extends PluginSettingTab {
         });
         menu.addSeparator();
         menu.addItem((item) => {
-          item.setTitle('Remove').setIcon('lucide-trash').onClick(async () => {
+          item.setTitle('Remove').setIcon('trash').onClick(async () => {
             new Notice(`QMD: removing collection "${col.name}"…`);
             try {
               await new Promise<void>((resolve, reject) => {
