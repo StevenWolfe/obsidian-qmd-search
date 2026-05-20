@@ -1,3 +1,11 @@
+# [0.13.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.13...0.13.0) (2026-05-20)
+
+
+### Features
+
+* add local telemetry plumbing (opt-in, disabled by default, [#185](https://github.com/StevenWolfe/obsidian-qmd-search/issues/185)) ([8529df7](https://github.com/StevenWolfe/obsidian-qmd-search/commit/8529df7efe5278dbbad359b2c13b9ce47c0b4db2))
+* diagnostics report + paste.rs share ([#185](https://github.com/StevenWolfe/obsidian-qmd-search/issues/185)) ([a5f7d62](https://github.com/StevenWolfe/obsidian-qmd-search/commit/a5f7d62c70f95a9620365fb22076f6ff42084261))
+
 ## [0.12.13](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.12.12...0.12.13) (2026-05-20)
 
 
