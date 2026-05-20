@@ -30,7 +30,7 @@
     "esbuild": "^0.28.0",
     "eslint": "^9.0.0",
     "eslint-plugin-obsidianmd": "^0.1.9",
-    "globals": "^16.0.0",
+    "globals": "^17.6.0",
     "obsidian": "latest",
     "semantic-release": "^25.0.3",
     "typescript": "^6.0.3",
