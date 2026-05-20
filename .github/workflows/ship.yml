@@ -113,7 +113,8 @@ jobs:
           git add manifest.json versions.json || true
           # Only commit if there are staged changes (avoid failing when nothing changed)
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No changes to commit; creating empty commit so PR can be created"
+            git commit --allow-empty -m "chore: release v${VERSION} (no-op placeholder)"
           else
             git commit -m "chore: release v${VERSION}"
           fi
