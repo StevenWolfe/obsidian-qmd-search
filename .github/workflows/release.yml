@@ -1,0 +1,51 @@
+name: Release
+
+# Runs on every push to main. Semantic-release analyzes commits since the
+# last tag and releases only when there are releasable changes (fix/feat/breaking).
+# The release commit itself uses [skip ci] so this workflow does not re-trigger.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # manual trigger for testing / emergency releases
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0           # semantic-release needs full history
+          token: ${{ secrets.GH_PAT }}   # PAT so the release commit can push to protected main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # Package plugin zip before semantic-release/github tries to publish it
+      - name: Package plugin zip
+        run: |
+          mkdir -p obsidian-qmd-search
+          cp main.js manifest.json styles.css obsidian-qmd-search/
+          zip -r obsidian-qmd-search.zip obsidian-qmd-search/
+
+      - name: Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: github-actions[bot]@users.noreply.github.com
