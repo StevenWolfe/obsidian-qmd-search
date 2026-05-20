@@ -1,0 +1,25 @@
+---
+import { marked } from 'marked';
+import Base from '../layouts/Base.astro';
+// ?raw resolves at Vite bundle time — safe for static prerendering.
+import rawChangelog from '../../../CHANGELOG.md?raw';
+
+// Strip the mid-file "# Changelog" banner (from the older hand-written format)
+// that would otherwise render as a duplicate H1 mid-document.
+const raw = rawChangelog.replace(/\n# Changelog\n[\s\S]*?(?=\n## \[)/, '\n');
+const html = marked(raw);
+---
+<Base
+  title="Changelog · QMD Search for Obsidian"
+  description="Release history for the QMD Search plugin for Obsidian."
+  activePage="changelog"
+>
+<div class="wrap">
+  <div class="cl-head">
+    <div class="eyebrow">Release history</div>
+    <h1>Changelog</h1>
+    <p class="cl-lead">All notable changes to QMD Search, newest first. Generated from <a href="https://github.com/StevenWolfe/obsidian-qmd-search/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a>.</p>
+  </div>
+  <div class="changelog" set:html={html} />
+</div>
+</Base>
