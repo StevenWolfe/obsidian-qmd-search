@@ -1321,3 +1321,41 @@
   text-align: right;
   color: var(--text-muted);
 }
+
+/* ── Diagnostics card ──────────────────────────────────────── */
+.qmd-diag-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin: 6px 0 12px;
+}
+.qmd-diag-label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.qmd-diag-card .qmd-muted { font-size: 0.88em; margin: 0 0 10px; }
+.qmd-diag-btn-row { display: flex; gap: 8px; }
+.qmd-diag-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  cursor: pointer;
+}
+.qmd-diag-share-result { margin-top: 10px; font-size: 0.88em; }
+.qmd-diag-share-result--hidden { display: none; }
+.qmd-diag-url {
+  display: block;
+  word-break: break-all;
+  margin-bottom: 4px;
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+}
+.qmd-diag-privacy-warn {
+  color: var(--text-warning, var(--text-muted));
+  font-size: 0.85em;
+  margin: 4px 0 0;
+}

@@ -9,6 +9,7 @@ import { type LogLevel, setLogLevel, log } from './util/log';
 import { buildEnv } from './util/env';
 import { timeAgo } from './util/time';
 import { computeIndexHealth, type IndexHealth, type QmdStatus, type QmdCollectionStatus } from './client/types';
+import { buildDiagnosticsReport, postReport } from './util/telemetry';
 
 // Fallback if status call fails
 function loadCollectionNames(): string[] {
@@ -493,10 +494,10 @@ export class QmdSettingTab extends PluginSettingTab {
       })
       .settingEl.append(debounceValueEl);
 
-    // Telemetry opt-in
+    // ── Telemetry & diagnostics ───────────────────────────────────────────────
     new Setting(section)
       .setName('Usage analytics')
-      .setDesc('Record timing and index stats locally to ~/.cache/qmd/telemetry.jsonl. Opt-in, stored on your machine only, never uploaded.')
+      .setDesc('Background collection of timing and index stats to ~/.cache/qmd/telemetry.jsonl. Opt-in, stored on your machine only, never uploaded automatically.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.telemetryEnabled)
@@ -505,6 +506,60 @@ export class QmdSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings(false);
           }),
       );
+
+    // Diagnostics card — always available, not gated by telemetry toggle
+    const diagCard = section.createDiv({ cls: 'qmd-diag-card' });
+    diagCard.createEl('div', { cls: 'qmd-diag-label', text: 'Diagnostics report' });
+    diagCard.createEl('p', {
+      cls: 'qmd-muted',
+      text: 'Snapshot of version, index, hardware, and recent timings. Useful for bug reports.',
+    });
+
+    const diagBtnRow = diagCard.createDiv({ cls: 'qmd-diag-btn-row' });
+
+    const makeSettingsSnap = () => ({
+      transportMode:      this.plugin.settings.transportMode,
+      defaultSearchMode:  this.plugin.settings.defaultSearchMode,
+      noRerank:           this.plugin.settings.noRerank,
+      indexName:          this.plugin.settings.indexName,
+      logLevel:           this.plugin.settings.logLevel,
+      telemetryEnabled:   this.plugin.settings.telemetryEnabled,
+    });
+
+    const copyBtn = diagBtnRow.createEl('button', { cls: 'qmd-diag-btn', text: '📋 Copy' });
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(buildDiagnosticsReport(makeSettingsSnap()))
+        .then(() => new Notice('QMD: diagnostics copied to clipboard ✓'))
+        .catch(() => new Notice('QMD: clipboard write failed'));
+    });
+
+    const shareBtn = diagBtnRow.createEl('button', { cls: 'qmd-diag-btn', text: '📤 Share…' });
+    const shareResult = diagCard.createDiv({ cls: 'qmd-diag-share-result qmd-diag-share-result--hidden' });
+
+    shareBtn.addEventListener('click', async () => {
+      shareBtn.disabled = true;
+      shareBtn.textContent = '⏳ Uploading…';
+      shareResult.addClass('qmd-diag-share-result--hidden');
+      try {
+        const url = await postReport(buildDiagnosticsReport(makeSettingsSnap()));
+        shareResult.empty();
+        shareResult.removeClass('qmd-diag-share-result--hidden');
+        const urlEl = shareResult.createEl('a', { cls: 'qmd-diag-url', href: url, text: url });
+        urlEl.addEventListener('click', (e: MouseEvent) => {
+          e.preventDefault();
+          window.open(url, '_blank');
+        });
+        shareResult.createEl('p', {
+          cls: 'qmd-diag-privacy-warn',
+          text: '⚠ Not private — anyone with this URL can view the contents. Share only with developers.',
+        });
+      } catch (err) {
+        new Notice(`QMD: share failed — ${(err as Error).message}`);
+      } finally {
+        shareBtn.textContent = '📤 Share…';
+        shareBtn.disabled = false;
+      }
+    });
 
     // qmd binary path — read-only chip with Change… button (#6)
     const autoDetected = this.plugin.resolvedBinaryPath !== 'qmd' && this.plugin.settings.qmdBinaryPath === 'qmd';
