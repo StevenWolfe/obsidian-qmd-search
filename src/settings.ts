@@ -536,6 +536,10 @@ export class QmdSettingTab extends PluginSettingTab {
     });
 
     const shareBtn = diagBtnRow.createEl('button', { cls: 'qmd-diag-btn', text: '📤 Share…' });
+    diagCard.createEl('p', {
+      cls: 'qmd-muted',
+      text: 'Share uploads a one-time snapshot to a private URL — independent of the analytics toggle.',
+    });
     const shareResult = diagCard.createDiv({ cls: 'qmd-diag-share-result qmd-diag-share-result--hidden' });
 
     shareBtn.addEventListener('click', async () => {
