@@ -11,6 +11,7 @@ import type {
 import { normalizeResult } from './types';
 import { log } from '../util/log';
 import { buildEnv } from '../util/env';
+import { timed } from '../util/telemetry';
 
 const MODE_CMD: Record<SearchOptions['mode'], string> = {
   keyword: 'search',
@@ -167,12 +168,14 @@ export class CliQmdClient implements QmdClient {
     if (opts.minScore) args.push('--min-score', String(opts.minScore));
 
     log.debug('search opts:', opts);
-    const raw = await runQmd(this.binary, args);
-    // Output is a bare JSON array, not {results: [...]}
-    const parsed = JSON.parse(raw) as RawQmdResult[] | { results?: RawQmdResult[] };
-    const items = Array.isArray(parsed) ? parsed : (parsed.results ?? []);
-    log.debug('search returned', items.length, 'results');
-    return items.map(normalizeResult);
+    return timed({ command: cmd, transport: 'cli', mode: opts.mode }, async () => {
+      const raw = await runQmd(this.binary, args);
+      // Output is a bare JSON array, not {results: [...]}
+      const parsed = JSON.parse(raw) as RawQmdResult[] | { results?: RawQmdResult[] };
+      const items = Array.isArray(parsed) ? parsed : (parsed.results ?? []);
+      log.debug('search returned', items.length, 'results');
+      return items.map(normalizeResult);
+    }, (results) => results.length);
   }
 
   async get(pathOrDocid: string): Promise<QmdDocument> {

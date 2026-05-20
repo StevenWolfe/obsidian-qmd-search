@@ -1,6 +1,7 @@
 const http = require('http') as typeof import('http');
 
 import { log } from '../util/log';
+import { timed } from '../util/telemetry';
 
 import type { QmdClient } from './base';
 import type {
@@ -180,9 +181,11 @@ export class McpQmdClient implements QmdClient {
     if (opts.candidateLimit) args['candidates'] = opts.candidateLimit;
     if (opts.minScore) args['min_score'] = opts.minScore;
 
-    const result = (await this.rpc('query', args)) as RawQmdResult[] | { results?: RawQmdResult[] } | null;
-    const items = Array.isArray(result) ? result : (result?.results ?? []);
-    return items.map(normalizeResult);
+    return timed({ command: 'query', transport: 'mcp', mode: opts.mode }, async () => {
+      const result = (await this.rpc('query', args)) as RawQmdResult[] | { results?: RawQmdResult[] } | null;
+      const items = Array.isArray(result) ? result : (result?.results ?? []);
+      return items.map(normalizeResult);
+    }, (results) => results.length);
   }
 
   async get(pathOrDocid: string): Promise<QmdDocument> {
