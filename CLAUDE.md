@@ -182,6 +182,7 @@ Without the `(#N)` suffix the fix lands in the release but has no visible link b
 
 1. Assign issue → create branch `fix/N-short-description` or `feat/N-short-description`
 2. Open PR as **draft** immediately; add `Closes #N` to the PR body
-3. Test locally with `VAULT_PATH=~/path/to/vault npm run deploy` before marking ready
-4. Merge → semantic-release cuts a version → issues auto-close → milestone auto-closes if all issues resolved
-5. Regressions get a **new issue**, not a reopened one
+3. Set the **milestone** on the PR if it closes milestone issues (PRs are issues in GitHub's API): `gh api repos/StevenWolfe/obsidian-qmd-search/issues/<PR#> -X PATCH -f milestone=1`
+4. Test locally with `VAULT_PATH=~/path/to/vault npm run deploy` before marking ready
+5. Merge → semantic-release cuts a version → issues auto-close → milestone auto-closes if all issues resolved
+6. Regressions get a **new issue**, not a reopened one
