@@ -15,5 +15,6 @@ function enabled(level: Exclude<LogLevel, 'off'>): boolean {
 export const log = {
   error: (...args: unknown[]) => { if (enabled('error')) console.error('[qmd]', ...args); },
   warn:  (...args: unknown[]) => { if (enabled('warn'))  console.warn( '[qmd]', ...args); },
+  info:  (...args: unknown[]) => { if (enabled('warn'))  console.info( '[qmd]', ...args); },
   debug: (...args: unknown[]) => { if (enabled('debug')) console.debug('[qmd]', ...args); },
 };
