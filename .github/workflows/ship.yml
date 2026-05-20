@@ -49,6 +49,19 @@ jobs:
         with:
           token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
+      - name: Skip if triggered by an automated release commit
+        run: |
+          # If the last commit message or author indicates this was an automated
+          # release bump/placeholder commit, exit early to avoid creating another
+          # release PR and re-triggering the workflow in a loop.
+          LAST_MSG=$(git log -1 --pretty=format:%s || echo "")
+          LAST_EMAIL=$(git log -1 --pretty=format:%ae || echo "")
+          echo "Last commit: '$LAST_MSG' <$LAST_EMAIL>"
+          if echo "$LAST_MSG" | grep -qE '^chore: release v' || echo "$LAST_EMAIL" | grep -qE 'github-actions|noreply@github.com'; then
+            echo "Detected automated release commit. Skipping ship workflow."
+            exit 0
+          fi
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
