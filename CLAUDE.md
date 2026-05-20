@@ -162,3 +162,26 @@ npm rebuild -g better-sqlite3
 nvm use <version-used-to-install-qmd>
 npm install -g @tobilu/qmd
 ```
+
+---
+
+## Workflow conventions
+
+### Commit messages — reference issue numbers
+
+Always append `(#N)` to commit messages when a commit addresses a tracked issue. This makes the issue number a clickable hyperlink in GitHub Release notes (semantic-release passes commit messages through verbatim):
+
+```
+fix: strip @@ diff-hunk prefix from search result snippets (#194)
+feat: default to semantic mode, add power-mode toggle (#193)
+```
+
+Without the `(#N)` suffix the fix lands in the release but has no visible link back to the issue.
+
+### Issue → PR → release flow
+
+1. Assign issue → create branch `fix/N-short-description` or `feat/N-short-description`
+2. Open PR as **draft** immediately; add `Closes #N` to the PR body
+3. Test locally with `VAULT_PATH=~/path/to/vault npm run deploy` before marking ready
+4. Merge → semantic-release cuts a version → issues auto-close → milestone auto-closes if all issues resolved
+5. Regressions get a **new issue**, not a reopened one
