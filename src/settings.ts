@@ -92,7 +92,7 @@ export class QmdSettingTab extends PluginSettingTab {
     if (this.plugin.resolvedBinaryPath !== 'qmd') {
       runVersion(this.plugin.resolvedBinaryPath).then((v) => {
         if (!binaryPill.isConnected) return;
-        binaryPill.setText(`qmd ${v}`);
+        binaryPill.setText(v);
         binaryPill.removeClass('qmd-binary-pill--checking');
         binaryPill.dataset.fullVersion = v;
       }).catch(() => {
@@ -536,6 +536,10 @@ export class QmdSettingTab extends PluginSettingTab {
     });
 
     const shareBtn = diagBtnRow.createEl('button', { cls: 'qmd-diag-btn', text: '📤 Share…' });
+    diagCard.createEl('p', {
+      cls: 'qmd-muted',
+      text: 'Share uploads a one-time snapshot to a private URL — independent of the analytics toggle.',
+    });
     const shareResult = diagCard.createDiv({ cls: 'qmd-diag-share-result qmd-diag-share-result--hidden' });
 
     shareBtn.addEventListener('click', async () => {
@@ -787,7 +791,7 @@ export class QmdSettingTab extends PluginSettingTab {
     if (this.plugin.resolvedBinaryPath !== 'qmd') {
       runVersion(this.plugin.resolvedBinaryPath).then((v) => {
         if (!aboutEl.isConnected) return;
-        aboutEl.createEl('p', { cls: 'qmd-about-line', text: `qmd ${v}` });
+        aboutEl.createEl('p', { cls: 'qmd-about-line', text: v });
       }).catch(() => { /* ignore */ });
     }
   }
