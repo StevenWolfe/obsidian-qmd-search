@@ -3,14 +3,17 @@ const fs = require('fs') as typeof import('fs');
 const os = require('os') as typeof import('os');
 const path = require('path') as typeof import('path');
 
-import { App, Menu, Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Menu, Modal } from 'obsidian';
 import type QmdSearchPlugin from './main';
 import { type LogLevel, setLogLevel, log } from './util/log';
 import { buildEnv } from './util/env';
-import { loadCollectionNames } from './util/config';
-import type { QmdStatus, IndexHealth } from './client/types';
-import { computeIndexHealth } from './client/types';
 import { timeAgo } from './util/time';
+import { computeIndexHealth, type IndexHealth, type QmdStatus, type QmdCollectionStatus } from './client/types';
+
+// Fallback if status call fails
+function loadCollectionNames(): string[] {
+  return [];
+}
 
 export interface QmdSearchSettings {
   qmdBinaryPath: string;
@@ -46,72 +49,6 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   reindexDebounceSeconds: 90,
 };
 
-function runVersion(binary: string): Promise<string> {
-  if (!binary.trim()) return Promise.reject(new Error('empty path'));
-  if ((binary.includes('/') || binary.includes('\\')) && !fs.existsSync(binary)) {
-    return Promise.reject(new Error('file not found'));
-  }
-  return new Promise((resolve, reject) => {
-    execFile(binary, ['--version'], { timeout: 5000, env: buildEnv() }, (err, stdout) => {
-      if (err) reject(new Error(err.message));
-      else resolve(stdout.trim());
-    });
-  });
-}
-
-/** Populate a <select> element with options, restoring the current value. */
-export class CollectionNameModal extends Modal {
-  private resolved = false;
-
-  constructor(
-    app: App,
-    private readonly defaultValue: string,
-    private readonly onSubmit: (name: string | null) => void,
-  ) {
-    super(app);
-  }
-
-  onOpen(): void {
-    this.modalEl.addClass('qmd-collection-name-modal');
-    const { contentEl } = this;
-    contentEl.createEl('h3', { text: 'Register vault as collection' });
-    const input = contentEl.createEl('input', { type: 'text', value: this.defaultValue, placeholder: 'Collection name' });
-    input.classList.add('qmd-collection-name-input');
-
-    const btnRow = contentEl.createDiv({ cls: 'qmd-collection-name-buttons' });
-    const registerBtn = btnRow.createEl('button', { text: 'Register', cls: 'mod-cta' });
-    const cancelBtn = btnRow.createEl('button', { text: 'Cancel' });
-
-    const submit = () => {
-      if (this.resolved) return;
-      const name = input.value.trim();
-      if (!name) return;
-      this.resolved = true;
-      this.close();
-      this.onSubmit(name);
-    };
-    const cancel = () => {
-      if (this.resolved) return;
-      this.resolved = true;
-      this.close();
-      this.onSubmit(null);
-    };
-
-    registerBtn.addEventListener('click', submit);
-    cancelBtn.addEventListener('click', cancel);
-    input.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter') submit();
-      else if (e.key === 'Escape') cancel();
-    });
-    setTimeout(() => { input.focus(); input.select(); }, 50);
-  }
-
-  onClose(): void {
-    if (!this.resolved) { this.resolved = true; this.onSubmit(null); }
-    this.contentEl.empty();
-  }
-}
-
 export class QmdSettingTab extends PluginSettingTab {
   private tickTimer: number | null = null;
 
@@ -138,25 +75,16 @@ export class QmdSettingTab extends PluginSettingTab {
     const docsLink = headerMeta.createEl('a', { cls: 'qmd-docs-link', text: 'Docs ↗' });
     docsLink.addEventListener('click', (e) => {
       e.preventDefault();
-      window.open('https://stevenwolfe.github.io/obsidian-qmd-search/');
+      window.open('https://github.com/StevenWolfe/obsidian-qmd-search', '_blank');
     });
-    // Plain muted version text — no colored pill (#15)
-    headerMeta.createEl('span', {
-      cls: 'qmd-version-meta',
-      text: `plugin v${this.plugin.manifest.version}`,
-    });
+    headerMeta.createSpan({ text: ' · ' });
+    const binaryPill = headerMeta.createSpan({ cls: 'qmd-binary-pill qmd-binary-pill--checking', text: 'checking…' });
 
-    // Binary status pill (async) — shows qmd version, moves SHA to Advanced (#7)
-    const binaryPill = headerMeta.createEl('span', { cls: 'qmd-binary-pill qmd-binary-pill--checking', text: 'checking…' });
     if (this.plugin.resolvedBinaryPath !== 'qmd') {
       runVersion(this.plugin.resolvedBinaryPath).then((v) => {
         if (!binaryPill.isConnected) return;
-        // Strip build hash from header; version only (#7)
-        const versionOnly = v.replace(/\s*\([0-9a-f]{6,}\)\s*$/, '').trim();
-        binaryPill.setText(`binary OK · ${versionOnly}`);
+        binaryPill.setText(`qmd ${v}`);
         binaryPill.removeClass('qmd-binary-pill--checking');
-        binaryPill.addClass('qmd-binary-pill--ok');
-        // Store full version for Advanced > About
         binaryPill.dataset.fullVersion = v;
       }).catch(() => {
         if (!binaryPill.isConnected) return;
@@ -182,28 +110,39 @@ export class QmdSettingTab extends PluginSettingTab {
     if (!contentArea) { this.display(); return; }
     const wasAdvancedOpen =
       contentArea.querySelector<HTMLDetailsElement>('.qmd-advanced-section')?.open ?? false;
-    contentArea.empty();
-    this.loadContent(contentArea, wasAdvancedOpen);
+    this.loadContent(contentArea, wasAdvancedOpen, true);
   }
 
-  private loadContent(contentArea: HTMLElement, wasAdvancedOpen: boolean): void {
-    contentArea.createEl('p', { cls: 'qmd-loading', text: 'Loading index status…' });
+  private loadContent(contentArea: HTMLElement, wasAdvancedOpen: boolean, isRefreshing = false): void {
+    if (isRefreshing) {
+      contentArea.addClass('qmd-is-loading');
+    } else {
+      contentArea.empty();
+      contentArea.createEl('p', { cls: 'qmd-loading', text: 'Loading index status…' });
+    }
+
     this.plugin.client.status().then((status) => {
       if (!contentArea.isConnected) return;
       contentArea.empty();
+      contentArea.removeClass('qmd-is-loading');
+
+      const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
+      const matched = status.collections.find((c) => c.path === vaultPath);
+
       if (status.collections.length === 0) {
         this.renderFirstRun(contentArea, wasAdvancedOpen);
       } else {
         const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
         const totalVectors = status.totalVectors ?? 0;
         const health = computeIndexHealth(totalDocs, totalVectors);
-        this.renderHealthy(contentArea, status, health, wasAdvancedOpen);
+        this.renderHealthy(contentArea, status, health, wasAdvancedOpen, matched);
       }
       this.startTimeTick();
     }).catch((err: Error) => {
       log.error('settings status failed:', err.message);
       if (!contentArea.isConnected) return;
       contentArea.empty();
+      contentArea.removeClass('qmd-is-loading');
       this.renderFirstRun(contentArea, wasAdvancedOpen, err.message);
     });
   }
@@ -224,16 +163,23 @@ export class QmdSettingTab extends PluginSettingTab {
   }
 
   private renderFirstRun(container: HTMLElement, wasAdvancedOpen: boolean, errorMsg?: string): void {
-    // Empty state card
+    this.renderRegistrationCard(container, true, errorMsg);
+    this.renderGeneralSettings(container);
+    this.renderAdvancedSection(container, wasAdvancedOpen);
+  }
+
+  private renderRegistrationCard(container: HTMLElement, isFirstRun: boolean, errorMsg?: string): void {
     const card = container.createDiv({ cls: 'qmd-empty-card' });
-    card.createEl('div', { cls: 'qmd-empty-card-icon', text: '🗄' });
+    card.createEl('div', { cls: 'qmd-empty-card-icon', text: isFirstRun ? '🗄' : '📍' });
     const cardBody = card.createDiv({ cls: 'qmd-empty-card-body' });
-    cardBody.createEl('strong', { text: 'Index your vault to start searching' });
+    cardBody.createEl('strong', { text: isFirstRun ? 'Index your vault to start searching' : 'This vault is not registered' });
     cardBody.createEl('p', {
       cls: 'qmd-muted',
       text: errorMsg
         ? `Error: ${errorMsg}`
-        : 'QMD hasn\'t seen this vault yet. Indexing runs locally and takes about 30s per 1,000 notes.',
+        : isFirstRun
+          ? 'QMD hasn\'t seen this vault yet. Indexing runs locally and takes about 30s per 1,000 notes.'
+          : 'You can search other collections, but this vault hasn\'t been indexed for search yet.',
     });
     const indexBtn = card.createEl('button', { cls: 'mod-cta', text: 'Index this vault' });
     indexBtn.addEventListener('click', async () => {
@@ -269,12 +215,19 @@ export class QmdSettingTab extends PluginSettingTab {
         }
       }
     });
-
-    this.renderGeneralSettings(container);
-    this.renderAdvancedSection(container, wasAdvancedOpen);
   }
 
-  private renderHealthy(container: HTMLElement, status: QmdStatus, health: IndexHealth, wasAdvancedOpen: boolean): void {
+  private renderHealthy(
+    container: HTMLElement,
+    status: QmdStatus,
+    health: IndexHealth,
+    wasAdvancedOpen: boolean,
+    matched?: QmdCollectionStatus,
+  ): void {
+    if (!matched) {
+      this.renderRegistrationCard(container, false);
+    }
+
     const totalDocs = status.totalDocs ?? status.collections.reduce((n, c) => n + c.docCount, 0);
     const totalVectors = status.totalVectors ?? 0;
     const lastIndexed = status.collections[0]?.lastIndexed;
@@ -387,9 +340,13 @@ export class QmdSettingTab extends PluginSettingTab {
 
     const collList = collSection.createDiv({ cls: 'qmd-collection-list' });
     for (const col of status.collections) {
-      const row = collList.createDiv({ cls: 'qmd-collection-row' });
+      const isMatched = col.name === matched?.name;
+      const row = collList.createDiv({ cls: `qmd-collection-row${isMatched ? ' qmd-collection-row--active' : ''}` });
       row.createEl('span', { cls: 'qmd-col-icon', text: '🗄' });
       row.createEl('span', { cls: 'qmd-col-name', text: col.name });
+      if (isMatched) {
+        row.createSpan({ cls: 'qmd-col-badge', text: 'Current' });
+      }
       row.createEl('span', { cls: 'qmd-col-docs qmd-muted', text: `${col.docCount.toLocaleString()} docs` });
       if (col.lastIndexed) {
         const colTimeEl = row.createEl('span', { cls: 'qmd-col-time qmd-muted' });
@@ -400,14 +357,14 @@ export class QmdSettingTab extends PluginSettingTab {
       menuBtn.addEventListener('click', (e: MouseEvent) => {
         const menu = new Menu();
         menu.addItem((item) => {
-          item.setTitle('Re-index').setIcon('refresh-cw').onClick(async () => {
+          item.setTitle('Re-index').setIcon('lucide-refresh-cw').onClick(async () => {
             new Notice(`QMD: re-indexing "${col.name}"…`);
             await this.plugin.reindex();
             this.refreshStatusArea();
           });
         });
         menu.addItem((item) => {
-          item.setTitle('Generate embeddings').setIcon('cpu').onClick(async () => {
+          item.setTitle('Generate embeddings').setIcon('lucide-cpu').onClick(async () => {
             new Notice(`QMD: generating embeddings for "${col.name}"…`);
             await this.plugin.embed();
             this.refreshStatusArea();
@@ -415,7 +372,7 @@ export class QmdSettingTab extends PluginSettingTab {
         });
         menu.addSeparator();
         menu.addItem((item) => {
-          item.setTitle('Remove').setIcon('trash').onClick(async () => {
+          item.setTitle('Remove').setIcon('lucide-trash').onClick(async () => {
             new Notice(`QMD: removing collection "${col.name}"…`);
             try {
               await new Promise<void>((resolve, reject) => {
@@ -722,4 +679,69 @@ export class QmdSettingTab extends PluginSettingTab {
       }).catch(() => { /* ignore */ });
     }
   }
+}
+
+export class CollectionNameModal extends Modal {
+  private resolved = false;
+  private result: string | null = null;
+
+  constructor(
+    app: App,
+    private readonly defaultValue: string,
+    private readonly onSubmit: (name: string | null) => void,
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    this.modalEl.addClass('qmd-collection-name-modal');
+    const { contentEl } = this;
+    contentEl.createEl('h3', { text: 'Register vault as collection' });
+    const input = contentEl.createEl('input', { type: 'text', value: this.defaultValue, placeholder: 'Collection name' });
+    input.classList.add('qmd-collection-name-input');
+
+    const btnRow = contentEl.createDiv({ cls: 'qmd-collection-name-buttons' });
+    const registerBtn = btnRow.createEl('button', { text: 'Register', cls: 'mod-cta' });
+    const cancelBtn = btnRow.createEl('button', { text: 'Cancel' });
+
+    const submit = () => {
+      if (this.resolved) return;
+      const name = input.value.trim() || this.defaultValue;
+      this.resolved = true;
+      this.close();
+      this.onSubmit(name);
+    };
+    const cancel = () => {
+      if (this.resolved) return;
+      this.resolved = true;
+      this.close();
+      this.onSubmit(null);
+    };
+
+    registerBtn.addEventListener('click', submit);
+    cancelBtn.addEventListener('click', cancel);
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Enter') submit();
+      else if (e.key === 'Escape') cancel();
+    });
+    setTimeout(() => { input.focus(); input.select(); }, 50);
+  }
+
+  onClose(): void {
+    if (!this.resolved) { this.resolved = true; this.onSubmit(null); }
+    this.contentEl.empty();
+  }
+}
+
+async function runVersion(binary: string): Promise<string> {
+  if (!binary.trim()) return Promise.reject(new Error('empty path'));
+  if ((binary.includes('/') || binary.includes('\\')) && !fs.existsSync(binary)) {
+    return Promise.reject(new Error('file not found'));
+  }
+  return new Promise((resolve, reject) => {
+    execFile(binary, ['--version'], { timeout: 5000, env: buildEnv() }, (err, stdout) => {
+      if (err) reject(new Error(err.message));
+      else resolve(stdout.trim());
+    });
+  });
 }

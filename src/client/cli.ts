@@ -184,7 +184,20 @@ export class CliQmdClient implements QmdClient {
   async status(): Promise<QmdStatus> {
     // qmd status has no --json flag; parse the plain text output.
     const raw = await runQmd(this.binary, [...this.ix(), 'status']);
-    return parseStatusText(raw);
+    const status = parseStatusText(raw);
+
+    // Enrich collections with their local paths for vault self-detection (#88)
+    for (const col of status.collections) {
+      try {
+        const showOutput = await runQmd(this.binary, [...this.ix(), 'collection', 'show', col.name]);
+        const pathMatch = showOutput.match(/Path:\s+(.+)/);
+        if (pathMatch) col.path = pathMatch[1].trim();
+      } catch (err) {
+        log.warn(`failed to fetch path for collection ${col.name}:`, (err as Error).message);
+      }
+    }
+
+    return status;
   }
 
   async dispose(): Promise<void> {

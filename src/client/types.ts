@@ -45,6 +45,7 @@ export interface QmdCollectionStatus {
   name: string;
   docCount: number;
   lastIndexed?: string;
+  path?: string;
 }
 
 export interface QmdStatus {
