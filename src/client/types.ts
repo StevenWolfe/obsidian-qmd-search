@@ -26,7 +26,7 @@ export function normalizeResult(raw: RawQmdResult): QmdResult {
     docid: raw.docid,
     score: raw.score,
     title: raw.title ?? '',
-    snippet: raw.snippet ?? '',
+    snippet: (raw.snippet ?? '').replace(/^@@[^@]*@@\s*/, ''),
     line: raw.line,
     collection: uriMatch ? uriMatch[1] : '',
     path: uriMatch ? uriMatch[2] : raw.file,
