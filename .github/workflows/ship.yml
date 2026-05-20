@@ -128,9 +128,10 @@ jobs:
       # can proceed without a PAT (GITHUB_TOKEN has statuses: write).
       # Skip if using GH_PAT, as real CI will be triggered and satisfy rulesets.
       - name: Satisfy required status checks
-        if: ${{ !secrets.GH_PAT }}
+        if: ${{ env.HAS_PAT == 'false' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.GH_PAT != '' }}
         run: |
           SHA="${{ steps.pr.outputs.sha }}"
           REPO="${{ github.repository }}"
