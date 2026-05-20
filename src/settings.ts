@@ -497,7 +497,7 @@ export class QmdSettingTab extends PluginSettingTab {
     // ── Telemetry & diagnostics ───────────────────────────────────────────────
     new Setting(section)
       .setName('Usage analytics')
-      .setDesc('Background collection of timing and index stats to ~/.cache/qmd/telemetry.jsonl. Opt-in, stored on your machine only, never uploaded automatically.')
+      .setDesc('Background collection of timing and index stats to ~/.cache/qmd/telemetry.jsonl. Opt-in, stored on your machine only, never uploaded automatically. For the plugin author\'s personal testing — not a third-party analytics service.')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.telemetryEnabled)
