@@ -30,6 +30,8 @@ export interface QmdSearchSettings {
   onboardingDone: boolean;
   autoReindex: boolean;
   reindexDebounceSeconds: number;
+  prewarmOnLaunch: boolean;
+  searchAhead: boolean;
 }
 
 export const DEFAULT_SETTINGS: QmdSearchSettings = {
@@ -38,7 +40,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   transportMode: 'cli',
   mcpPort: 8181,
   defaultCollection: '',
-  defaultSearchMode: 'keyword',
+  defaultSearchMode: 'hybrid',
   noRerank: false,
   candidateLimit: undefined,
   minScore: undefined,
@@ -47,6 +49,8 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   onboardingDone: false,
   autoReindex: false,
   reindexDebounceSeconds: 90,
+  prewarmOnLaunch: true,
+  searchAhead: true,
 };
 
 export class QmdSettingTab extends PluginSettingTab {
@@ -75,7 +79,7 @@ export class QmdSettingTab extends PluginSettingTab {
     const docsLink = headerMeta.createEl('a', { cls: 'qmd-docs-link', text: 'Docs ↗' });
     docsLink.addEventListener('click', (e) => {
       e.preventDefault();
-      window.open('https://github.com/StevenWolfe/obsidian-qmd-search', '_blank');
+      window.open('https://stevenwolfe.github.io/obsidian-qmd-search/', '_blank');
     });
     headerMeta.createSpan({ text: ' · ' });
     const binaryPill = headerMeta.createSpan({ cls: 'qmd-binary-pill qmd-binary-pill--checking', text: 'checking…' });
@@ -626,6 +630,30 @@ export class QmdSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             const n = parseFloat(value);
             this.plugin.settings.minScore = isNaN(n) || n <= 0 ? undefined : n;
+            await this.plugin.saveSettings(false);
+          }),
+      );
+
+    new Setting(advancedEl)
+      .setName('Pre-warm on launch')
+      .setDesc('Automatically start the qmd daemon and load models when Obsidian starts. Recommended for fast first-queries.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.prewarmOnLaunch)
+          .onChange(async (value) => {
+            this.plugin.settings.prewarmOnLaunch = value;
+            await this.plugin.saveSettings(false);
+          }),
+      );
+
+    new Setting(advancedEl)
+      .setName('Search ahead (instant fallback)')
+      .setDesc('While waiting for Hybrid/Semantic results, show Keyword results immediately. Makes search feel instant.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.searchAhead)
+          .onChange(async (value) => {
+            this.plugin.settings.searchAhead = value;
             await this.plugin.saveSettings(false);
           }),
       );

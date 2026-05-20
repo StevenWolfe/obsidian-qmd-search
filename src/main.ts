@@ -81,8 +81,29 @@ export default class QmdSearchPlugin extends Plugin {
     setTimeout(() => {
       if (!this.settings.onboardingDone) {
         new OnboardingModal(this.app, this).open();
+      } else if (this.settings.prewarmOnLaunch && this.settings.transportMode === 'mcp-http') {
+        void this.prewarm();
       }
     }, 500);
+  }
+
+  /** Trigger a dummy search to load models into GPU/RAM. */
+  async prewarm(): Promise<void> {
+    if (this.modelLoaded) return;
+    log.debug('pre-warming qmd models…');
+    try {
+      // Dummy hybrid search triggers expansion, embedding, and reranker models
+      await this.client.search({
+        query: '_warmup_',
+        mode: 'hybrid',
+        limit: 1,
+        noRerank: false,
+      });
+      this.modelLoaded = true;
+      log.debug('qmd models warmed up ✓');
+    } catch (err) {
+      log.warn('qmd pre-warm failed:', (err as Error).message);
+    }
   }
 
   async onunload(): Promise<void> {
@@ -253,6 +274,15 @@ export default class QmdSearchPlugin extends Plugin {
           lastIndexed,
           health: computeIndexHealth(totalDocs, totalVectors),
         });
+
+        // Maintenance reminder: if not auto-reindexing and index is older than 24h
+        if (!this.settings.autoReindex && lastIndexed) {
+          const lastDate = new Date(lastIndexed);
+          const diffHours = (Date.now() - lastDate.getTime()) / (1000 * 60 * 60);
+          if (diffHours > 24) {
+            log.info('Index is older than 24h; maintenance recommended.');
+          }
+        }
       }
     } catch (err) {
       const msg = (err as Error).message ?? '';
