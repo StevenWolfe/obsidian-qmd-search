@@ -138,7 +138,7 @@ export class QmdSettingTab extends PluginSettingTab {
     const docsLink = headerMeta.createEl('a', { cls: 'qmd-docs-link', text: 'Docs ↗' });
     docsLink.addEventListener('click', (e) => {
       e.preventDefault();
-      window.open('https://github.com/StevenWolfe/obsidian-qmd-search#readme');
+      window.open('https://stevenwolfe.github.io/obsidian-qmd-search/');
     });
     // Plain muted version text — no colored pill (#15)
     headerMeta.createEl('span', {
