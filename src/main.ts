@@ -100,12 +100,11 @@ export default class QmdSearchPlugin extends Plugin {
     if (this.modelLoaded) return;
     log.debug('pre-warming qmd models…');
     try {
-      // Dummy hybrid search triggers expansion, embedding, and reranker models
+      // Semantic warms the embedding model (~300 MB); avoids loading the full 3 GB reranking stack
       await this.client.search({
         query: '_warmup_',
-        mode: 'hybrid',
+        mode: 'semantic',
         limit: 1,
-        noRerank: false,
       });
       this.modelLoaded = true;
       log.debug('qmd models warmed up ✓');

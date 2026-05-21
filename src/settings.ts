@@ -42,7 +42,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   transportMode: 'cli',
   mcpPort: 8181,
   defaultCollection: '',
-  defaultSearchMode: 'hybrid',
+  defaultSearchMode: 'semantic',
   noRerank: false,
   candidateLimit: undefined,
   minScore: undefined,
@@ -450,8 +450,8 @@ export class QmdSettingTab extends PluginSettingTab {
       .setDesc(isPartial ? 'Hybrid and Semantic require embeddings. Currently coerced to Keyword.' : '')
       .addDropdown((dd) => {
         dd.addOption('keyword', 'Keyword')
-          .addOption('semantic', 'Semantic')
-          .addOption('hybrid', 'Hybrid (default)')
+          .addOption('semantic', 'Semantic (default)')
+          .addOption('hybrid', 'Hybrid — AI reranking (~2.5 GB extra models)')
           .setValue(this.plugin.settings.defaultSearchMode)
           .onChange(async (value) => {
             this.plugin.settings.defaultSearchMode = value as 'keyword' | 'semantic' | 'hybrid';
