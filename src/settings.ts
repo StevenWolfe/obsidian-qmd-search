@@ -133,8 +133,11 @@ export class QmdSettingTab extends PluginSettingTab {
     this.plugin.client.status().then((status) => {
       if (!contentArea.isConnected) return;
 
-      const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
-      const matched = status.collections.find((c) => c.path === vaultPath);
+      const normPath = (p: string) => p.replace(/\/+$/, '');
+      const vaultPath = normPath((this.app.vault.adapter as { basePath?: string }).basePath ?? '');
+      const matched = status.collections.find(
+        (c) => c.path !== undefined && normPath(c.path) === vaultPath,
+      );
 
       // Build into a detached element then swap atomically — avoids blank-flash during refresh
       const renderTarget = document.createElement('div') as HTMLElement;
@@ -218,6 +221,10 @@ export class QmdSettingTab extends PluginSettingTab {
             (err) => (err ? reject(new Error(err.message)) : resolve()),
           );
         });
+        indexBtn.textContent = 'Indexing…';
+        new Notice(`QMD: indexing files for "${name}"…`);
+        await this.plugin.reindex();
+        indexBtn.textContent = 'Embedding…';
         new Notice(`QMD: generating embeddings for "${name}"…`);
         await this.plugin.embed();
         new Notice(`QMD: vault registered as "${name}" ✓`);
@@ -261,8 +268,16 @@ export class QmdSettingTab extends PluginSettingTab {
         cls: 'qmd-health-warn-sub',
         text: 'Hybrid & semantic modes will fall back to keyword until you run this.',
       });
+    } else if (matched) {
+      cardHeader.createEl('strong', { text: matched.name });
+      cardHeader.createSpan({ cls: 'qmd-col-badge', text: 'indexed' });
+      if (matched.lastIndexed) {
+        const timeEl = cardHeader.createEl('span', { cls: 'qmd-health-meta' });
+        timeEl.dataset.lastIndexed = matched.lastIndexed;
+        timeEl.setText(`Last indexed ${timeAgo(matched.lastIndexed)}`);
+      }
     } else {
-      cardHeader.createEl('strong', { text: 'Index healthy' });
+      cardHeader.createEl('strong', { text: 'Other collections indexed' });
       if (lastIndexed) {
         const timeEl = cardHeader.createEl('span', { cls: 'qmd-health-meta' });
         timeEl.dataset.lastIndexed = lastIndexed;
@@ -307,13 +322,14 @@ export class QmdSettingTab extends PluginSettingTab {
       });
     }
 
-    // Stats row
+    // Stats row — show vault-specific doc count when matched, global totals otherwise
     const statsRow = card.createDiv({ cls: 'qmd-health-stats' });
+    const displayDocs = matched ? matched.docCount : totalDocs;
     const embeddingsStr = isPartial
-      ? `0 / ${totalDocs.toLocaleString()}`
+      ? `0 / ${displayDocs.toLocaleString()}`
       : `${totalVectors.toLocaleString()} / ${totalDocs.toLocaleString()}`;
     const statItems: Array<[string, string, boolean?]> = [
-      ['Documents', totalDocs.toLocaleString()],
+      ['Documents', displayDocs.toLocaleString()],
       ['Collections', String(status.collections.length)],
       ['Embeddings', embeddingsStr, isPartial],
     ];
