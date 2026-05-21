@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.14.2...0.15.0) (2026-05-21)
+
+### Bug Fixes
+
+* clarify registered vs unregistered state in collection panel — path normalization, reindex step before embed, vault name in status card ([#99](https://github.com/StevenWolfe/obsidian-qmd-search/issues/99)) ([a9bb4e1](https://github.com/StevenWolfe/obsidian-qmd-search/commit/a9bb4e1))
+* semantic default, prewarm alignment, cold-start hint — flip default mode to semantic, fix modelLoaded suppressing hint, fix prewarm mode ([#209](https://github.com/StevenWolfe/obsidian-qmd-search/issues/209)) ([eaacaeb](https://github.com/StevenWolfe/obsidian-qmd-search/commit/eaacaeb))
+
 ## [0.14.2](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.14.1...0.14.2) (2026-05-20)
 
 ### Bug Fixes
