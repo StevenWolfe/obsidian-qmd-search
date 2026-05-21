@@ -228,3 +228,12 @@ jobs:
           else
             echo "No open milestone found for v${VERSION} — skipping"
           fi
+
+      # ── Deploy docs ────────────────────────────────────────────────────────
+      # GITHUB_TOKEN-created releases don't fire the `release: published` event
+      # (GitHub loop prevention), so deploy-docs.yml never auto-triggers.
+      # Dispatch it explicitly instead — deploy-docs.yml has workflow_dispatch.
+      - name: Deploy docs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy-docs.yml --ref main
