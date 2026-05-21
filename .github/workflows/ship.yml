@@ -145,11 +145,10 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.next }}"
           BRANCH="${{ steps.version.outputs.branch }}"
+          PR_BODY="Automated release PR for v${VERSION}."$'\n\n'"CI (type-check, lint, build) passed on \`main\` before this branch was cut. The branch contains only version-file changes (\`manifest.json\`, \`versions.json\`)."
           PR_URL=$(gh pr create \
             --title "chore(release): $VERSION" \
-            --body "Automated release PR for v${VERSION}.
-
-CI (type-check, lint, build) passed on \`main\` before this branch was cut. The branch contains only version-file changes (\`manifest.json\`, \`versions.json\`)." \
+            --body "$PR_BODY" \
             --base main \
             --head "$BRANCH")
           PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
