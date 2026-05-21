@@ -30,6 +30,7 @@ jobs:
       pull-requests: write
       statuses: write
       issues: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v6
