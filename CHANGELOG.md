@@ -1,3 +1,24 @@
+# [0.15.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.14.2...0.15.0) (2026-05-21)
+
+### Bug Fixes
+
+* clarify registered vs unregistered state in collection panel — path normalization, reindex step before embed, vault name in status card ([#99](https://github.com/StevenWolfe/obsidian-qmd-search/issues/99)) ([a9bb4e1](https://github.com/StevenWolfe/obsidian-qmd-search/commit/a9bb4e1))
+* semantic default, prewarm alignment, cold-start hint — flip default mode to semantic, fix modelLoaded suppressing hint, fix prewarm mode ([#209](https://github.com/StevenWolfe/obsidian-qmd-search/issues/209)) ([eaacaeb](https://github.com/StevenWolfe/obsidian-qmd-search/commit/eaacaeb))
+
+## [0.14.2](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.14.1...0.14.2) (2026-05-20)
+
+### Bug Fixes
+
+* apply full qmd handelize() transform in result navigation fallback ([#203](https://github.com/StevenWolfe/obsidian-qmd-search/issues/203)) ([7eb6e7f](https://github.com/StevenWolfe/obsidian-qmd-search/commit/7eb6e7ffa004afffc2ce42380d94eeef15f95afd))
+* strip duplicate 'qmd' prefix from version display, add slug fallback for result navigation ([#205](https://github.com/StevenWolfe/obsidian-qmd-search/issues/205), [#203](https://github.com/StevenWolfe/obsidian-qmd-search/issues/203)) ([c673bdb](https://github.com/StevenWolfe/obsidian-qmd-search/commit/c673bdb015c786a6f37784c568e15b1c3bbdbc2c))
+* strip full snippet header line including context range; clarify Share is one-time ([#202](https://github.com/StevenWolfe/obsidian-qmd-search/issues/202), [#206](https://github.com/StevenWolfe/obsidian-qmd-search/issues/206)) ([0b9c3e6](https://github.com/StevenWolfe/obsidian-qmd-search/commit/0b9c3e6b2e63599c9a178bca70433ef63ca70915))
+
+## [0.14.1](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.14.0...0.14.1) (2026-05-20)
+
+### Bug Fixes
+
+* Docs link opens in browser at versioned URL, strip @@ snippet prefix ([#109](https://github.com/StevenWolfe/obsidian-qmd-search/issues/109), [#194](https://github.com/StevenWolfe/obsidian-qmd-search/issues/194)) ([c702ac4](https://github.com/StevenWolfe/obsidian-qmd-search/commit/c702ac44f9aa26be9ee6f8aa1fd5b96e2e511df7))
+
 ## [0.14.0](https://github.com/StevenWolfe/obsidian-qmd-search/compare/0.13.1...0.14.0) (2026-05-20)
 
 ### Features

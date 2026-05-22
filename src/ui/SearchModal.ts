@@ -91,7 +91,7 @@ export class SearchModal extends Modal {
     const MODE_TOOLTIPS: Record<string, string> = {
       keyword:  'BM25 keyword search — fast, no embeddings needed',
       semantic: 'Vector similarity search — requires embeddings',
-      hybrid:   'BM25 + vectors + AI reranking — best quality, requires embeddings',
+      hybrid:   'BM25 + vectors + AI reranking — best quality, requires embeddings (~2.5 GB extra models)',
     };
     for (const [label, value] of [
       ['Keyword', 'keyword'],
@@ -172,10 +172,10 @@ export class SearchModal extends Modal {
 
     this.queryInput.focus();
 
-    // Pre-warm qmd on first open so the user's first real search doesn't cold-start
+    // Warm the text index on first open — keyword only, does not set modelLoaded
+    // (modelLoaded tracks embedding model readiness; keyword prewarm doesn't load it)
     if (!this.plugin.modelLoaded) {
       void this.client.search({ query: '_warmup_', mode: 'keyword', limit: 1 })
-        .then(() => { this.plugin.modelLoaded = true; })
         .catch(() => { /* ignore — warmup failure is non-fatal */ });
     }
   }

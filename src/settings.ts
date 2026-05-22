@@ -42,7 +42,7 @@ export const DEFAULT_SETTINGS: QmdSearchSettings = {
   transportMode: 'cli',
   mcpPort: 8181,
   defaultCollection: '',
-  defaultSearchMode: 'hybrid',
+  defaultSearchMode: 'semantic',
   noRerank: false,
   candidateLimit: undefined,
   minScore: undefined,
@@ -92,7 +92,7 @@ export class QmdSettingTab extends PluginSettingTab {
     if (this.plugin.resolvedBinaryPath !== 'qmd') {
       runVersion(this.plugin.resolvedBinaryPath).then((v) => {
         if (!binaryPill.isConnected) return;
-        binaryPill.setText(`qmd ${v}`);
+        binaryPill.setText(v);
         binaryPill.removeClass('qmd-binary-pill--checking');
         binaryPill.dataset.fullVersion = v;
       }).catch(() => {
@@ -133,8 +133,11 @@ export class QmdSettingTab extends PluginSettingTab {
     this.plugin.client.status().then((status) => {
       if (!contentArea.isConnected) return;
 
-      const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath ?? '';
-      const matched = status.collections.find((c) => c.path === vaultPath);
+      const normPath = (p: string) => p.replace(/\/+$/, '');
+      const vaultPath = normPath((this.app.vault.adapter as { basePath?: string }).basePath ?? '');
+      const matched = status.collections.find(
+        (c) => c.path !== undefined && normPath(c.path) === vaultPath,
+      );
 
       // Build into a detached element then swap atomically — avoids blank-flash during refresh
       const renderTarget = document.createElement('div') as HTMLElement;
@@ -218,6 +221,10 @@ export class QmdSettingTab extends PluginSettingTab {
             (err) => (err ? reject(new Error(err.message)) : resolve()),
           );
         });
+        indexBtn.textContent = 'Indexing…';
+        new Notice(`QMD: indexing files for "${name}"…`);
+        await this.plugin.reindex();
+        indexBtn.textContent = 'Embedding…';
         new Notice(`QMD: generating embeddings for "${name}"…`);
         await this.plugin.embed();
         new Notice(`QMD: vault registered as "${name}" ✓`);
@@ -261,8 +268,16 @@ export class QmdSettingTab extends PluginSettingTab {
         cls: 'qmd-health-warn-sub',
         text: 'Hybrid & semantic modes will fall back to keyword until you run this.',
       });
+    } else if (matched) {
+      cardHeader.createEl('strong', { text: matched.name });
+      cardHeader.createSpan({ cls: 'qmd-col-badge', text: 'indexed' });
+      if (matched.lastIndexed) {
+        const timeEl = cardHeader.createEl('span', { cls: 'qmd-health-meta' });
+        timeEl.dataset.lastIndexed = matched.lastIndexed;
+        timeEl.setText(`Last indexed ${timeAgo(matched.lastIndexed)}`);
+      }
     } else {
-      cardHeader.createEl('strong', { text: 'Index healthy' });
+      cardHeader.createEl('strong', { text: 'Other collections indexed' });
       if (lastIndexed) {
         const timeEl = cardHeader.createEl('span', { cls: 'qmd-health-meta' });
         timeEl.dataset.lastIndexed = lastIndexed;
@@ -307,13 +322,14 @@ export class QmdSettingTab extends PluginSettingTab {
       });
     }
 
-    // Stats row
+    // Stats row — show vault-specific doc count when matched, global totals otherwise
     const statsRow = card.createDiv({ cls: 'qmd-health-stats' });
+    const displayDocs = matched ? matched.docCount : totalDocs;
     const embeddingsStr = isPartial
-      ? `0 / ${totalDocs.toLocaleString()}`
+      ? `0 / ${displayDocs.toLocaleString()}`
       : `${totalVectors.toLocaleString()} / ${totalDocs.toLocaleString()}`;
     const statItems: Array<[string, string, boolean?]> = [
-      ['Documents', totalDocs.toLocaleString()],
+      ['Documents', displayDocs.toLocaleString()],
       ['Collections', String(status.collections.length)],
       ['Embeddings', embeddingsStr, isPartial],
     ];
@@ -434,8 +450,8 @@ export class QmdSettingTab extends PluginSettingTab {
       .setDesc(isPartial ? 'Hybrid and Semantic require embeddings. Currently coerced to Keyword.' : '')
       .addDropdown((dd) => {
         dd.addOption('keyword', 'Keyword')
-          .addOption('semantic', 'Semantic')
-          .addOption('hybrid', 'Hybrid (default)')
+          .addOption('semantic', 'Semantic (default)')
+          .addOption('hybrid', 'Hybrid — AI reranking (~2.5 GB extra models)')
           .setValue(this.plugin.settings.defaultSearchMode)
           .onChange(async (value) => {
             this.plugin.settings.defaultSearchMode = value as 'keyword' | 'semantic' | 'hybrid';
@@ -536,6 +552,10 @@ export class QmdSettingTab extends PluginSettingTab {
     });
 
     const shareBtn = diagBtnRow.createEl('button', { cls: 'qmd-diag-btn', text: '📤 Share…' });
+    diagCard.createEl('p', {
+      cls: 'qmd-muted',
+      text: 'Share uploads a one-time snapshot to a private URL — independent of the analytics toggle.',
+    });
     const shareResult = diagCard.createDiv({ cls: 'qmd-diag-share-result qmd-diag-share-result--hidden' });
 
     shareBtn.addEventListener('click', async () => {
@@ -787,7 +807,7 @@ export class QmdSettingTab extends PluginSettingTab {
     if (this.plugin.resolvedBinaryPath !== 'qmd') {
       runVersion(this.plugin.resolvedBinaryPath).then((v) => {
         if (!aboutEl.isConnected) return;
-        aboutEl.createEl('p', { cls: 'qmd-about-line', text: `qmd ${v}` });
+        aboutEl.createEl('p', { cls: 'qmd-about-line', text: v });
       }).catch(() => { /* ignore */ });
     }
   }

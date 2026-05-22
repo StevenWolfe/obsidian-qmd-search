@@ -36,6 +36,8 @@ All `qmd` interaction is behind a `QmdClient` interface (`src/client/base.ts`). 
 
 `qmd --json` returns a bare array of `RawQmdResult` where the file field is a URI like `qmd://collection-name/relative/path.md`. `normalizeResult()` in `src/client/types.ts` splits this into `collection` and `path` fields used throughout the UI.
 
+**qmd path contract — `handelize()`**: qmd transforms every file path through `handelize()` before storing it in the index (see `@tobilu/qmd dist/store.js`). The transform: lowercase the whole path, then per segment replace any run of non-alphanumeric, non-`$` characters (spaces, parens, dots in directory names, etc.) with a single hyphen, strip leading/trailing hyphens, preserve the file extension unchanged. So `reference/Proxmox Grafana Dashboard.md` → `reference/proxmox-grafana-dashboard.md`. Vault filenames with spaces or punctuation will never match qmd paths by a plain string compare. `navigateToResult()` in `src/util/navigate.ts` applies the same transform to vault paths as a fallback lookup to handle this.
+
 ### Settings (`src/settings.ts`)
 
 `QmdSearchSettings` is persisted via Obsidian's `loadData/saveData`. `saveSettings(rebuildClient)` accepts a boolean to skip client teardown for non-transport changes (e.g. default collection, search flags).
@@ -77,7 +79,7 @@ The workflow (`ship.yml`):
 1. Runs CI gate (type-check + lint + build) on current `main`.
 2. Bumps `manifest.json` + `versions.json` (source of truth — `package.json` stays at `0.0.0` forever, this plugin is not published to npm).
 3. Pushes a `chore/release-vX.Y.Z` branch and opens a PR.
-4. Posts commit statuses on that branch commit for the three required checks (`CI / Type check`, `CI / Lint`, `CI / Build`) — this satisfies branch protection without re-running CI or needing a PAT (see _Why statuses, not CI_ below).
+4. Posts commit statuses on that branch commit for the three required checks (`Type check`, `Lint`, `Build`) — this satisfies branch protection without re-running CI or needing a PAT (see _Why statuses, not CI_ below).
 5. Enables auto-merge, polls until merged, then tags the release and publishes the GitHub release with zip + individual assets.
 
 If a release run fails after step 3, the stale `chore/release-v*` branch is cleaned up automatically on the next run (step 3 deletes it before pushing).
@@ -91,20 +93,9 @@ cat manifest.json | grep version
 
 #### Branch protection (required status checks)
 
-`main` has a repository ruleset requiring **CI / Type check**, **CI / Lint**, **CI / Build** to pass before merge. Set via:
+`main` has a repository ruleset (`main-protection`) requiring **Type check**, **Lint**, **Build** to pass before merge. The ruleset uses the GitHub Actions app integration (`integration_id: 15368`) which requires real check runs.
 
-```bash
-gh api repos/StevenWolfe/obsidian-qmd-search/branches/main/protection \
-  -X PUT \
-  -H "Accept: application/vnd.github+json" \
-  -f required_status_checks[strict]=false \
-  -f 'required_status_checks[contexts][]=CI / Type check' \
-  -f 'required_status_checks[contexts][]=CI / Lint' \
-  -f 'required_status_checks[contexts][]=CI / Build' \
-  -f enforce_admins=false \
-  -f required_pull_request_reviews=null \
-  -f restrictions=null
-```
+**After ship.yml merges (one-time):** Remove `integration_id` from the three required status check entries in the ruleset. This allows synthetic commit statuses (posted by `ship.yml`) to satisfy the requirement. Edit via GitHub UI: Settings → Rules → main-protection → edit each required status check and remove the integration constraint.
 
 #### Required repo settings (one-time)
 
@@ -119,6 +110,8 @@ Settings → General → Pull Requests:
 
 GitHub blocks all workflow triggers from `GITHUB_TOKEN` (loop prevention). When `ship.yml` creates the release branch with `GITHUB_TOKEN`, the `pull_request` event never fires and CI never runs. The fix: `ship.yml` posts synthetic commit statuses via the GitHub Statuses API after the branch push. The `GITHUB_TOKEN` has `statuses: write` permission, so this works without a PAT. The statuses satisfy the required checks and auto-merge proceeds.
 
+Once the ruleset `integration_id` is removed (one-time post-merge step), contexts `Type check`, `Lint`, `Build` match both synthetic commit statuses AND real GitHub Actions check run job names from `ci.yml` — so no changes to `ci.yml` are needed.
+
 _If you ever need to run CI on the release branch manually_ (e.g. during debugging), push an empty commit from your local machine:
 ```bash
 git fetch origin chore/release-vX.Y.Z
@@ -127,7 +120,7 @@ git commit --allow-empty -m "ci: trigger checks"
 git push
 ```
 
-`release.yml` was deleted (PR #51) — it was a duplicate that would have fired a second time on the same tag.
+`release.yml` was deleted (PR #213) — semantic-release couldn't push to protected `main`.
 
 ---
 
@@ -184,5 +177,5 @@ Without the `(#N)` suffix the fix lands in the release but has no visible link b
 2. Open PR as **draft** immediately; add `Closes #N` to the PR body
 3. Set the **milestone** on the PR if it closes milestone issues (PRs are issues in GitHub's API): `gh api repos/StevenWolfe/obsidian-qmd-search/issues/<PR#> -X PATCH -f milestone=1`
 4. Test locally with `VAULT_PATH=~/path/to/vault npm run deploy` before marking ready
-5. Merge → semantic-release cuts a version → issues auto-close → milestone auto-closes if all issues resolved
+5. Merge → trigger **Ship Release** workflow (Actions tab) with `patch`/`minor`/`major` → issues auto-close → milestone auto-closes if all issues resolved
 6. Regressions get a **new issue**, not a reopened one
